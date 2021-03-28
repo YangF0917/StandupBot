@@ -271,6 +271,11 @@ def move_to_wip(command, sender):
     pr.set_labels(LABEL_WIP)
     return "Set pull request back to work in progress"
 
+def choose_standup_order(command, sender):
+    print
+    "in choose_standup_order"
+    return command + " not implemented yet"
+
 def alpha_order(command, sender, table=BOX_3):
     print
     "in alpha_order func"
@@ -334,6 +339,7 @@ CHOICES['wip'] = move_to_wip
 CHOICES['sualphaorder'] = alpha_order
 CHOICES['su_r_alphaorder'] = reverse_alpha_order
 CHOICES['sunlorder'] = name_length_order
+CHOICES['sort'] = choose_standup_order
 
 
 # === BOT COMMAND MAPPING END ===
