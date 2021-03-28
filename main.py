@@ -271,7 +271,7 @@ def move_to_wip(command, sender):
     pr.set_labels(LABEL_WIP)
     return "Set pull request back to work in progress"
 
-def alpha_order(command, sender):
+def alpha_order(command, sender, table=BOX_3):
     print
     "in alpha_order func"
     if len(table) < 1:
