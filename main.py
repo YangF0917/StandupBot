@@ -18,8 +18,26 @@ bot_id = None
 
 MENTION_REGEX = "^<@(|[WU].+?)>(.*)"
 ADD_USER_REGEX = "<@(|[WU].+?)>"
+# CONSTANTS
+RTM_READY_DELAY = 1 # 1 second delay between reading from RTM
+EXAMPLE_COMMAND = "help"
+MENTION_REGEX = "^<@(|[WU].+?)>(.*)"
+ADD_USER_REGEX = "<@(|[WU].+?)>"
+CHOICES = {}
+# PR Label names
+LABEL_COOP_REVIEW = "Coop Review"
+LABEL_FT_REVIEW = "Review"
+LABEL_WIP = "Work in Progress"
+member_list = open("coops.txt", "r") # coop review
+BOX_1 = deque(filter(None, member_list.read().split('\n')))
+member_list.close()
+member_list = open("fulltimes.txt", "r") # full timer review
+BOX_2 = deque(filter(None, member_list.read().split('\n')))
+member_list.close()
+member_list = open("fulltimes.txt", "r") # full timer review
+BOX_3 = deque(filter(None, member_list.read().split('\n')))
+member_list.close()
 
-'''
 def show_table(command, sender, table=BOX_1):
     print
     'in show_table func'
@@ -38,6 +56,10 @@ def show_high_table(command, sender):
     'in show_high_table func'
     return show_table(command, sender, BOX_2)
 
+def show_standup_table(command, sender):
+    print
+    'in show_standup_table func'
+    return show_table(command, sender, BOX_3)
 
 def drop_table(command, sender, table=BOX_1):
     print
@@ -55,6 +77,10 @@ def drop_high_table(command, sender):
     'in drop_high_table func'
     return drop_table(command, sender, BOX_2)
 
+def drop_standup_table(command, sender):
+    print
+    'in drop_standup_table func'
+    return drop_table(command, sender, BOX_3)
 
 def list_commands(command, sender):
     print
@@ -334,8 +360,7 @@ def handle_command(command, channel, sender):
             text=response['text'] or default_response,
             attachments=response['attachment']
         )
-'''
-'''
+
 if __name__ == "__main__":
     if slack_client.rtm_connect(with_team_state=False, auto_reconnect=True):
         print("Code Review Robin connected and running!")
@@ -348,4 +373,3 @@ if __name__ == "__main__":
             time.sleep(RTM_READY_DELAY)
     else:
         print("Connection failed.")
-'''
