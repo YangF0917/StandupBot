@@ -304,7 +304,7 @@ def name_length_order(command, sender, table=BOX_3):
         return 'The table is empty!'
     else:
         tableString = 'Today\'s standup order is:\n'
-        temp = sorted(map(get_name, table), key = len)
+        temp = sorted(map(get_name, table), key = lambda reviewer: len(reviewer['user'])+len(reviewer['name']))
         for member in temp:
             reviewer = slack_client.api_call("users.info", user=member)
             tableString += (reviewer['user']['name'] + '\n')
