@@ -125,6 +125,11 @@ def add_to_high_table(command, sender):
     'in add_to_high_table func'
     return add_to_table(command, sender, BOX_2)
 
+def add_to_standup_table(command, sender):
+    print
+    'in add_to_standup_table func'
+    return add_to_table(command, sender, BOX_3)
+
 
 def remove_from_table(command, sender, table=BOX_1):
     print
@@ -148,6 +153,10 @@ def remove_from_high_table(command, sender):
     'in remove_from_high_table func'
     return remove_from_table(command, sender, BOX_2)
 
+def remove_from_standup_table(command, sender):
+    print
+    'in remove_from_standup_table func'
+    return remove_from_table(command, sender, BOX_3)
 
 def assign_reviewer(command, sender, table=BOX_1):
     message = {'text': 'The pull request does not exist!'}
@@ -276,8 +285,10 @@ CHOICES['sudroptable'] = drop_standup_table
 CHOICES['help'] = list_commands
 CHOICES['add'] = add_to_table
 CHOICES['ftadd'] = add_to_high_table
+CHOICES['suadd'] = add_to_standup_table
 CHOICES['remove'] = remove_from_table
 CHOICES['ftremove'] = remove_from_high_table
+CHOICES['suremove'] = remove_from_standup_table
 CHOICES['review'] = assign_reviewer
 CHOICES['finish'] = finish_review
 CHOICES['volunteer'] = volunteer
