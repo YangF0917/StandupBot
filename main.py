@@ -362,7 +362,7 @@ def handle_command(command, channel, sender):
         response = command_list(command_switch, command, sender)
 
     # Sends the response back to the channel
-    if isinstance(response, basestring) or response is None:
+    if isinstance(response, str) or response is None:
         slack_client.api_call(
             "chat.postMessage",
             channel=channel,
