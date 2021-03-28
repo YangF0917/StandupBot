@@ -34,7 +34,7 @@ member_list.close()
 member_list = open("fulltimes.txt", "r") # full timer review
 BOX_2 = deque(filter(None, member_list.read().split('\n')))
 member_list.close()
-member_list = open("fulltimes.txt", "r") # full timer review
+member_list = open("standup.txt", "r") # full timer review
 BOX_3 = deque(filter(None, member_list.read().split('\n')))
 member_list.close()
 
