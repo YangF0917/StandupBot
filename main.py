@@ -4,6 +4,7 @@ import re
 from slackclient import SlackClient
 from collections import *
 import json
+import random
 
 
 # load environment variables
@@ -24,6 +25,7 @@ EXAMPLE_COMMAND = "help"
 MENTION_REGEX = "^<@(|[WU].+?)>(.*)"
 ADD_USER_REGEX = "<@(|[WU].+?)>"
 CHOICES = {}
+SORTS = {}
 # PR Label names
 LABEL_COOP_REVIEW = "Coop Review"
 LABEL_FT_REVIEW = "Review"
@@ -271,10 +273,17 @@ def move_to_wip(command, sender):
     pr.set_labels(LABEL_WIP)
     return "Set pull request back to work in progress"
 
-def choose_standup_order(command, sender):
-    print
-    "in choose_standup_order"
-    return command + " not implemented yet"
+# def sort_help(command, sender):
+#     print
+#     "in sort_help"
+
+# def choose_standup_order(index, command, sender):
+#     print
+#     "in choose_standup_order"
+#     result = SORTS.get(index, None)
+#     if result != None:
+#         result = result(command, sender)
+#     return result
 
 def alpha_order(command, sender, table=BOX_3):
     print
@@ -312,6 +321,15 @@ def name_length_order(command, sender, table=BOX_3):
             tableString += member
         return tableString
 
+def randomize_standup(command, sender, table=BOX_3):
+    tableString = 'This week\'s standup order:\n'
+    users = [mem for mem in table]
+    random.shuffle(users)
+    for member in users:
+        reviewer = slack_client.api_call("users.info", user=member)
+        tableString += (reviewer['user']['name'])
+    return tableString
+
 def get_name(member):
     temp = slack_client.api_call("users.info", user=member)
     return temp['user']['name'] + '\n'
@@ -337,11 +355,17 @@ CHOICES['finish'] = finish_review
 CHOICES['volunteer'] = volunteer
 CHOICES['ftvolunteer'] = high_volunteer
 CHOICES['wip'] = move_to_wip
+# CHOICES['sort'] = choose_standup_order
+
+# sorts
+# SORTS['alpha'] = alpha_order
+# SORTS['ralpha'] = reverse_alpha_order
+# SORTS['length'] = name_length_order
+# SORTS['random'] = randomize_standup
 CHOICES['sualphaorder'] = alpha_order
 CHOICES['su_r_alphaorder'] = reverse_alpha_order
 CHOICES['sunlorder'] = name_length_order
-CHOICES['sort'] = choose_standup_order
-
+CHOICES['surandom'] = randomize_standup
 
 # === BOT COMMAND MAPPING END ===
 
