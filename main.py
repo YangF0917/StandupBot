@@ -5,6 +5,7 @@ from slackclient import SlackClient
 from collections import *
 import json
 import random
+import numpy as np
 
 
 # load environment variables
@@ -17,8 +18,6 @@ slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
 # starterbot's user ID in Slack: value is assigned after the bot starts up
 bot_id = None
 
-MENTION_REGEX = "^<@(|[WU].+?)>(.*)"
-ADD_USER_REGEX = "<@(|[WU].+?)>"
 # CONSTANTS
 RTM_READY_DELAY = 1 # 1 second delay between reading from RTM
 EXAMPLE_COMMAND = "help"
@@ -52,7 +51,6 @@ def show_table(command, sender, table=BOX_1):
             tableString += (reviewer['user']['name'] + '\n')
         return tableString
 
-
 def show_high_table(command, sender):
     print
     'in show_high_table func'
@@ -73,7 +71,6 @@ def drop_table(command, sender, table=BOX_1):
         save_table_to_file(table)
         return 'The table has been cleared'
 
-
 def drop_high_table(command, sender):
     print
     'in drop_high_table func'
@@ -93,7 +90,6 @@ def list_commands(command, sender):
     commandList += "For a full explanation of all commands, view the README here:\n"
     commandList += "https://github.com/hubdoc/codereview-slackbot/blob/master/README.md"
     return commandList
-
 
 def add_to_table(command, sender, table=BOX_1):
     print
@@ -121,7 +117,6 @@ def add_to_table(command, sender, table=BOX_1):
         return '{} users added to the table!'.format(users_added)
     return 'No user to add'
 
-
 def add_to_high_table(command, sender):
     print
     'in add_to_high_table func'
@@ -131,7 +126,6 @@ def add_to_standup_table(command, sender):
     print
     'in add_to_standup_table func'
     return add_to_table(command, sender, BOX_3)
-
 
 def remove_from_table(command, sender, table=BOX_1):
     print
@@ -148,7 +142,6 @@ def remove_from_table(command, sender, table=BOX_1):
                 save_table_to_file(table)
                 return '<@{}> removed from the table!'.format(match.group(1))
     return '"remove @<user>" to remove a member of the table.'
-
 
 def remove_from_high_table(command, sender):
     print
@@ -201,7 +194,6 @@ def assign_reviewer(command, sender, table=BOX_1):
     pr.set_labels(LABEL_COOP_REVIEW)
     return message
 
-
 def finish_review(command, sender, table=BOX_2):
     print
     'in finish_review func'
@@ -245,7 +237,6 @@ def finish_review(command, sender, table=BOX_2):
     pr.set_labels(LABEL_FT_REVIEW)
     return message
 
-
 def volunteer(command, sender, table=BOX_1):
     message = '<@{}> has volunteered!'.format(sender)
     if (sender in table):
@@ -256,12 +247,10 @@ def volunteer(command, sender, table=BOX_1):
         message = '<@{}> is not in the table!'.format(sender)
     return message
 
-
 def high_volunteer(command, sender):
     print
     'in high_volunteer func'
     return volunteer(command, sender, BOX_2)
-
 
 def move_to_wip(command, sender):
     print
@@ -273,62 +262,55 @@ def move_to_wip(command, sender):
     pr.set_labels(LABEL_WIP)
     return "Set pull request back to work in progress"
 
-# def sort_help(command, sender):
-#     print
-#     "in sort_help"
-
-# def choose_standup_order(index, command, sender):
-#     print
-#     "in choose_standup_order"
-#     result = SORTS.get(index, None)
-#     if result != None:
-#         result = result(command, sender)
-#     return result
-
-def alpha_order(command, sender, table=BOX_3):
+def sort_help():
     print
-    "in alpha_order func"
+    "in sort_help"
+    sortList = "Here is the list of sorts:\n"
+    for key in SORTS.keys():
+        sortList += (key + '\n')
+    sortList += "You can probably figure out what each one is :)"
+    return sortList
+
+def choose_standup_order(command, table=BOX_3):
+    print
+    "in choose_standup_order"
+
+    command_string = command.split(' ')
+    if len(command_string) == 1 or command_string[1] not in SORTS:
+        return sort_help()
+
     if len(table) < 1:
         return 'The table is empty!'
-    else:
-        tableString = 'Today\'s standup order:\n'
-        temp = sorted(map(get_name, table))
+    else: 
+        tableString = 'This week\'s standup order:\n'
+        temp = SORTS[command_string[1]]()
         for member in temp:
             tableString += member
         return tableString
 
-def reverse_alpha_order(command, sender, table=BOX_3):
-    print
-    "in reverse_alpha_order func"
-    if len(table) < 1:
-        return 'The table is empty!'
-    else:
-        tableString = 'Today\'s standup order:\n'
-        temp = sorted(map(get_name, table), reverse=True)
-        for member in temp:
-            tableString +=member
-        return tableString
+def alpha_order(table=BOX_3):
+    return sorted(map(get_name, table))
 
-def name_length_order(command, sender, table=BOX_3):
-    print
-    "in name_length_order func"
-    if len(table) < 1:
-        return 'The table is empty!'
-    else:
-        tableString = 'Today\'s standup order:\n'
-        temp = sorted(map(get_name, table), key = len)
-        for member in temp:
-            tableString += member
-        return tableString
+def reverse_alpha_order(table=BOX_3):
+    return sorted(map(get_name, table), reverse=True)
+  
+def name_length_order(table=BOX_3):
+    return sorted(map(get_name, table), key = len)
 
-def randomize_standup(command, sender, table=BOX_3):
-    tableString = 'This week\'s standup order:\n'
+def randomize_standup(table=BOX_3):
+    tableString = ''
     users = [mem for mem in table]
     random.shuffle(users)
     for member in users:
-        reviewer = slack_client.api_call("users.info", user=member)
-        tableString += (reviewer['user']['name'])
+        tableString += get_name(member) + '\n'
     return tableString
+
+def umar(table=BOX_3):
+    tableString = ''
+    num_umars = 15
+    temp = map(get_name, table)
+    temp = filter(lambda name: "umar" in name, temp)
+    return np.resize(temp, num_umars)
 
 def get_name(member):
     temp = slack_client.api_call("users.info", user=member)
@@ -355,17 +337,14 @@ CHOICES['finish'] = finish_review
 CHOICES['volunteer'] = volunteer
 CHOICES['ftvolunteer'] = high_volunteer
 CHOICES['wip'] = move_to_wip
-# CHOICES['sort'] = choose_standup_order
+CHOICES['sort'] = choose_standup_order
 
 # sorts
-# SORTS['alpha'] = alpha_order
-# SORTS['ralpha'] = reverse_alpha_order
-# SORTS['length'] = name_length_order
-# SORTS['random'] = randomize_standup
-CHOICES['sualphaorder'] = alpha_order
-CHOICES['su_r_alphaorder'] = reverse_alpha_order
-CHOICES['sunlorder'] = name_length_order
-CHOICES['surandom'] = randomize_standup
+SORTS['alpha'] = alpha_order
+SORTS['ralpha'] = reverse_alpha_order
+SORTS['length'] = name_length_order
+SORTS['random'] = randomize_standup
+SORTS['umar'] = umar
 
 # === BOT COMMAND MAPPING END ===
 
