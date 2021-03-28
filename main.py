@@ -35,8 +35,11 @@ member_list.close()
 member_list = open("fulltimes.txt", "r") # full timer review
 BOX_2 = deque(filter(None, member_list.read().split('\n')))
 member_list.close()
-member_list = open("standup.txt", "r") # full timer review
+member_list = open("standup.txt", "r") # standup list
 BOX_3 = deque(filter(None, member_list.read().split('\n')))
+member_list.close()
+member_list = open("umarfanclub.txt", "r") # umar fanclub
+BOX_4 = deque(filter(None, member_list.read().split('\n')))
 member_list.close()
 
 def show_table(command, sender, table=BOX_1):
@@ -61,6 +64,14 @@ def show_standup_table(command, sender):
     'in show_standup_table func'
     return show_table(command, sender, BOX_3)
 
+def show_umarfc(command, sender):
+    print
+    'in show_umarfc func'
+    if (sender in BOX_4): 
+        return show_table(command, sender, BOX_4)
+    else:
+        return "YOUR NOT PART OF THE UAMR FOTBALL CLUB"
+
 def drop_table(command, sender, table=BOX_1):
     print
     'in drop_table func'
@@ -81,11 +92,16 @@ def drop_standup_table(command, sender):
     'in drop_standup_table func'
     return drop_table(command, sender, BOX_3)
 
+def drop_umarfc(command, sender):
+    print
+    'in drop_umarfc func'
+    return drop_table(command, sender, BOX_4)
+
 def list_commands(command, sender):
     print
     'in list_commands func'
     commandList = 'Here are a list of commands:\n'
-    for key, value in CHOICES.iteritems():
+    for key, value in CHOICES.items():
         commandList += (key + '\n')
     commandList += "For a full explanation of all commands, view the README here:\n"
     commandList += "https://github.com/hubdoc/codereview-slackbot/blob/master/README.md"
@@ -126,6 +142,16 @@ def add_to_standup_table(command, sender):
     print
     'in add_to_standup_table func'
     return add_to_table(command, sender, BOX_3)
+
+def add_to_umarfanclub(command, sender, table = BOX_4):
+    print
+    'in add_to_umarfanclub func'
+    if sender not in table:
+        table.append(sender)
+        save_table_to_file(table)
+    else:
+        print
+        'User already exists at the table'
 
 def remove_from_table(command, sender, table=BOX_1):
     print
@@ -268,10 +294,10 @@ def sort_help():
     sortList = "Here is the list of sorts:\n"
     for key in SORTS.keys():
         sortList += (key + '\n')
-    sortList += "You can probably figure out what each one is :)"
+    sortList += "You can probably figure out what each one is ;)"
     return sortList
 
-def choose_standup_order(command, table=BOX_3):
+def choose_standup_order(command,sender, table=BOX_3):
     print
     "in choose_standup_order"
 
@@ -283,38 +309,39 @@ def choose_standup_order(command, table=BOX_3):
         return 'The table is empty!'
     else: 
         tableString = 'This week\'s standup order:\n'
-        temp = SORTS[command_string[1]]()
+        temp = SORTS[command_string[1]](command, sender)
         for member in temp:
             tableString += member
         return tableString
 
-def alpha_order(table=BOX_3):
+def alpha_order(command, sender, table=BOX_3):
     return sorted(map(get_name, table))
 
-def reverse_alpha_order(table=BOX_3):
+def reverse_alpha_order(command, sender, table=BOX_3):
     return sorted(map(get_name, table), reverse=True)
   
-def name_length_order(table=BOX_3):
+def name_length_order(command, sender, table=BOX_3):
     return sorted(map(get_name, table), key = len)
 
-def randomize_standup(table=BOX_3):
-    tableString = ''
+def randomize_standup(command, sender, table=BOX_3):
     users = [mem for mem in table]
     random.shuffle(users)
-    for member in users:
-        tableString += get_name(member) + '\n'
-    return tableString
+    return map(get_name, users)
 
-def umar(table=BOX_3):
-    tableString = ''
-    num_umars = 15
-    temp = map(get_name, table)
-    temp = filter(lambda name: "umar" in name, temp)
-    return np.resize(temp, num_umars)
+def umar(command, sender, table=BOX_3):
+    command_string = command.split(' ')
+    num_umars = 10 if len(command_string) < 3 else int(command_string[2])
+    if (num_umars > 15):
+        add_to_umarfanclub(command, sender) # you guys are ridiculous
+        return ["You're obsessed with Umar. Welcome to the Umar fanclub :eyes:"] 
+    elif (num_umars < 1):
+        return ["This is a true :umar-beatdown:"]
+    return [umar for umar in filter(lambda name: "umar" in name, map(get_name, table))] * num_umars
 
 def get_name(member):
     temp = slack_client.api_call("users.info", user=member)
     return temp['user']['name'] + '\n'
+
 # === ALL POSSIBLE BOT COMMANDS END ===
 
 # === BOT COMMAND MAPPING ===
@@ -338,6 +365,7 @@ CHOICES['volunteer'] = volunteer
 CHOICES['ftvolunteer'] = high_volunteer
 CHOICES['wip'] = move_to_wip
 CHOICES['sort'] = choose_standup_order
+CHOICES['umarfc'] = show_umarfc
 
 # sorts
 SORTS['alpha'] = alpha_order
@@ -362,6 +390,8 @@ def save_table_to_file(table=BOX_1):
         member_list = open("fulltimes.txt", "w")
     elif(table == BOX_3):
         member_list = open("standup.txt", "w")
+    elif(table == BOX_4):
+        member_list = open("umarfanclub.txt", "w")
     else:
         print("something went wrong!")
     file_buffer = ''
