@@ -284,6 +284,19 @@ def alpha_order(command, sender, table=BOX_3):
             tableString += (reviewer['user']['name'] + '\n')
         return tableString
 
+def reverse_alpha_order(command, sender, table=BOX_3):
+    print
+    "in reverse_alpha_order func"
+    if len(table) < 1:
+        return 'The table is empty!'
+    else:
+        tableString = 'Today\'s standup order is:\n'
+        temp = sorted(map(get_name, table), reverse=True)
+        for member in temp:
+            reviewer = slack_client.api_call("users.info", user=member)
+            tableString += (reviewer['user']['name'] + '\n')
+        return tableString
+
 def get_name(member):
     return slack_client.api_call("users.info", user=member)
 # === ALL POSSIBLE BOT COMMANDS END ===
@@ -309,6 +322,7 @@ CHOICES['volunteer'] = volunteer
 CHOICES['ftvolunteer'] = high_volunteer
 CHOICES['wip'] = move_to_wip
 CHOICES['sualphaorder'] = alpha_order
+CHOICES['su_r_alphaorder'] = reverse_alpha_order
 
 
 # === BOT COMMAND MAPPING END ===
