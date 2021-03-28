@@ -269,8 +269,10 @@ def move_to_wip(command, sender):
 
 CHOICES['showtable'] = show_table
 CHOICES['ftshowtable'] = show_high_table
+CHOICES['sushowtable'] = show_standup_table
 CHOICES['droptable'] = drop_table
 CHOICES['ftdroptable'] = drop_high_table
+CHOICES['sudroptable'] = drop_standup_table
 CHOICES['help'] = list_commands
 CHOICES['add'] = add_to_table
 CHOICES['ftadd'] = add_to_high_table
@@ -297,6 +299,8 @@ def save_table_to_file(table=BOX_1):
         member_list = open("coops.txt", "w")
     elif (table == BOX_2):  # unnecessary but just to double check
         member_list = open("fulltimes.txt", "w")
+    elif(table == BOX_3):
+        member_list = open("standup.txt", "w")
     else:
         print("something went wrong!")
     file_buffer = ''
