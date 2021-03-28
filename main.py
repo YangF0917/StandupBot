@@ -278,10 +278,9 @@ def alpha_order(command, sender, table=BOX_3):
         return 'The table is empty!'
     else:
         tableString = 'Today\'s standup order is:\n'
-        temp = sorted(map(get_name, table))
+        temp = (map(get_name, table))
         for member in temp:
-            reviewer = slack_client.api_call("users.info", user=member)
-            tableString += (reviewer['user']['name'] + '\n')
+            tableString += (member['user']['name'] + '\n')
         return tableString
 
 def reverse_alpha_order(command, sender, table=BOX_3):
@@ -293,8 +292,7 @@ def reverse_alpha_order(command, sender, table=BOX_3):
         tableString = 'Today\'s standup order is:\n'
         temp = sorted(map(get_name, table), reverse=True)
         for member in temp:
-            reviewer = slack_client.api_call("users.info", user=member)
-            tableString += (reviewer['user']['name'] + '\n')
+            tableString += (temp['user']['name'] + '\n')
         return tableString
 
 def name_length_order(command, sender, table=BOX_3):
@@ -306,8 +304,7 @@ def name_length_order(command, sender, table=BOX_3):
         tableString = 'Today\'s standup order is:\n'
         temp = sorted(map(get_name, table), key = lambda reviewer: len(reviewer['user'])+len(reviewer['name']))
         for member in temp:
-            reviewer = slack_client.api_call("users.info", user=member)
-            tableString += (reviewer['user']['name'] + '\n')
+            tableString += (temp['user']['name'] + '\n')
         return tableString
 
 def get_name(member):
