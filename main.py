@@ -5,6 +5,7 @@ from slackclient import SlackClient
 from collections import *
 import json
 import random
+import requests
 
 
 # load environment variables
@@ -40,7 +41,7 @@ member_list.close()
 member_list = open("standup.txt", "r") # standup list
 BOX_3 = deque(filter(None, member_list.read().split('\n')))
 member_list.close()
-member_list = open("umarfanclub.txt", "r") # umar fanclub
+member_list = open("backup.txt", "r") # backup list
 BOX_4 = deque(filter(None, member_list.read().split('\n')))
 member_list.close()
 
@@ -372,9 +373,11 @@ def umar(command, sender, random = False, table = BOX_3):
     elif (num_umars < 1):
         remove_from_umarfc(command, sender)
         return ["This is a true :umar-beatdown:"]
-    return [umar for umar in filter(lambda name: "umar" in name, map(get_name, table))] * num_umars
+    return [umar for umar in filter(lambda name: "umar" in name.lower(), map(get_name, table))] * num_umars
 
 def is_valid_number(string):
+    if string[0] == "-":
+        string = string[1:]
     for i in string: 
         if (ord(i) < ord('0') or ord(i) > ord('9')):
             return False
@@ -432,7 +435,7 @@ def save_table_to_file(table=BOX_1):
     elif(table == BOX_3):
         member_list = open("standup.txt", "w")
     elif(table == BOX_4):
-        member_list = open("umarfanclub.txt", "w")
+        member_list = open("backup.txt", "w")
     else:
         print("something went wrong!")
     file_buffer = ''
