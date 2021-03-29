@@ -307,7 +307,7 @@ def sort_help():
     sortList += "You can probably figure out what each one is ;)"
     return sortList
 
-def choose_standup_order(command,sender, table=BOX_3):
+def choose_standup_order(command, sender, table=BOX_3):
     print
     "in choose_standup_order"
 
@@ -349,15 +349,22 @@ def randomize_standup(command, sender, table=BOX_3):
     return map(get_name, users)
 
 def umar(command, sender, random = False, table = BOX_3):
+    slack_client.api_call("conversations.open", users=sender)['channel']['id']
     command_string = command.split(' ')
-    num_umars = 10 if (len(command_string) < 3 or not command_string[2].isnumeric()) else int(command_string[2])
+    num_umars = 10 if (len(command_string) < 3 or not is_valid_number(command_string[2])) else int(command_string[2])
     if (num_umars > 15):
         add_to_umarfanclub(command, sender)
         return ["You're obsessed with Umar. Welcome to the Umar fanclub :eyes:"] 
     elif (num_umars < 1):
         remove_from_umarfc(command, sender)
         return ["This is a true :umar-beatdown:"]
-    return [umar for umar in filter(lambda name: "umar" in name, map(get_name, table))] * num_umars 
+    return [umar for umar in filter(lambda name: "umar" in name, map(get_name, table))] * num_umars
+
+def is_valid_number(string):
+    for i in string: 
+        if (ord(i) < ord('0') or ord(i) > ord('9')):
+            return False
+    return True
 
 def get_name(member):
     temp = slack_client.api_call("users.info", user=member)
@@ -403,7 +410,6 @@ def command_list(index, command, sender):
         result = result(command, sender)
     return result
 
-
 def save_table_to_file(table=BOX_1):
     if (table == BOX_1):
         member_list = open("coops.txt", "w")
@@ -421,7 +427,6 @@ def save_table_to_file(table=BOX_1):
     member_list.write(file_buffer)
     member_list.close()
 
-
 def parse_bot_commands(slack_events):
     """
         Parses a list of events coming from the Slack RTM API to find bot commands.
@@ -435,7 +440,6 @@ def parse_bot_commands(slack_events):
                 return message, event["channel"], event["user"]
     return None, None, None
 
-
 def parse_direct_mention(message_text):
     """
         Finds a direct mention (a mention that is at the beginning) in message text
@@ -444,7 +448,6 @@ def parse_direct_mention(message_text):
     matches = re.search(MENTION_REGEX, message_text)
     # the first group contains the username, the second group contains the remaining message
     return (matches.group(1), matches.group(2).strip()) if matches else (None, None)
-
 
 def handle_command(command, channel, sender):
     """
@@ -455,12 +458,19 @@ def handle_command(command, channel, sender):
 
     # Finds and executes the given command, filling in response
     response = None
-    if channel[0] == "D":
-        response = "Please message the bot in the code-review channel!"
-    else:
-        # This is where you start to implement more commands!
-        command_switch = command.split(' ')[0]
-        response = command_list(command_switch, command, sender)
+    
+    # This is where you start to implement more commands!
+    command_switch = command.split(' ')[0]
+    '''
+    command_arr = command.split(' ')
+    if (len(command_arr) >= 2):
+        channel = channel if ... else sender
+    '''
+    
+    dm_channel = slack_client.api_call("conversations.open", users=sender)['channel']['id']
+    channel = dm_channel if (command_switch == 'umarfc') else channel
+
+    response = command_list(command_switch, command, sender)
 
     # Sends the response back to the channel
     if isinstance(response, str) or response is None:
