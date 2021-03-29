@@ -5,7 +5,6 @@ from slackclient import SlackClient
 from collections import *
 import json
 import random
-import numpy as np
 
 
 # load environment variables
@@ -179,6 +178,17 @@ def remove_from_standup_table(command, sender):
     'in remove_from_standup_table func'
     return remove_from_table(command, sender, BOX_3)
 
+def remove_from_umarfc(command, sender, table=BOX_4):
+    print
+    'in remove_from_umarfc func'
+    if sender in table:
+        table.remove(sender)
+        save_table_to_file(table)
+    else:
+        print
+        'User is not currently in the fanclub'
+
+
 def assign_reviewer(command, sender, table=BOX_1):
     message = {'text': 'The pull request does not exist!'}
     if (len(table) == 1):
@@ -310,8 +320,18 @@ def choose_standup_order(command,sender, table=BOX_3):
     else: 
         tableString = 'This week\'s standup order:\n'
         temp = SORTS[command_string[1]](command, sender)
-        for member in temp:
+        if (len(command_string) > 2 and command_string[2] == "pickme"):
+            sender_name = get_name(sender)
+            temp.insert(0, temp.pop(temp.index(sender_name))) if sender_name in temp else temp
+        if (len(command_string) > 2 and command_string[2] == "last"):
+            sender_name = get_name(sender) 
+            temp.append(temp.pop(temp.index(sender_name))) if sender_name in temp else temp
+        elif (len(command_string) > 2):
+            coolguy = [i for i in temp if command_string[2] in i]
+            temp.insert(0, temp.pop(temp.index(coolguy[0]))) if len(coolguy) else temp
+        for member in temp: 
             tableString += member
+        
         return tableString
 
 def alpha_order(command, sender, table=BOX_3):
@@ -328,15 +348,16 @@ def randomize_standup(command, sender, table=BOX_3):
     random.shuffle(users)
     return map(get_name, users)
 
-def umar(command, sender, table=BOX_3):
+def umar(command, sender, random = False, table = BOX_3):
     command_string = command.split(' ')
-    num_umars = 10 if len(command_string) < 3 else int(command_string[2])
+    num_umars = 10 if (len(command_string) < 3 or not command_string[2].isnumeric()) else int(command_string[2])
     if (num_umars > 15):
-        add_to_umarfanclub(command, sender) # you guys are ridiculous
+        add_to_umarfanclub(command, sender)
         return ["You're obsessed with Umar. Welcome to the Umar fanclub :eyes:"] 
     elif (num_umars < 1):
+        remove_from_umarfc(command, sender)
         return ["This is a true :umar-beatdown:"]
-    return [umar for umar in filter(lambda name: "umar" in name, map(get_name, table))] * num_umars
+    return [umar for umar in filter(lambda name: "umar" in name, map(get_name, table))] * num_umars 
 
 def get_name(member):
     temp = slack_client.api_call("users.info", user=member)
