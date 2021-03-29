@@ -12,3 +12,43 @@ Slack bot for creating standup order
 Now (in theory) you can run the bot locally with `python3 main.py` or `py main.py` depending on what version is being run.
 
 ## Features
+All commands take input separeated by a single space character
+Currently the commands supported are as follows
+
+sushowtable:
+- shows the standup table
+
+sudroptable:
+- clears the standup table
+
+suadd `<@user>...`:
+- adds the mentioned users to the standup table
+
+suremove `<@user>`:
+- removes the mentioned user from the standup table
+
+sort `<SortType> <Option>`:
+- performs the sorting with the SortType specified, user field for volunteering is optional
+
+### SortTypes
+alpha
+- creates standup order in alphabetical order
+
+ralpha
+- creates standup order in reverse alphabetical order
+
+length
+- creates standup order based on the length of the username (asc)
+
+random
+- creates a random standup order
+
+### Options
+pickme
+- volunteer yourself to go first
+
+last
+- put yourself last on the list
+
+`<@user>`
+- select a user to go first
