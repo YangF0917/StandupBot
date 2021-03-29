@@ -30,6 +30,12 @@ suremove `<@user>`:
 sort `<SortType> <Option>`:
 - performs the sorting with the SortType specified, user field for volunteering is optional
 
+advice:
+- generates advice
+
+number:
+- generates a cool fact about a random number
+
 ### SortTypes
 alpha
 - creates standup order in alphabetical order
