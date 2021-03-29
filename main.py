@@ -24,6 +24,9 @@ MENTION_REGEX = "^<@(|[WU].+?)>(.*)"
 ADD_USER_REGEX = "<@(|[WU].+?)>"
 CHOICES = {}
 SORTS = {}
+FAKE_FUNCTIONS = ['umarfc']
+FAKE_SORTS = ['umar']
+
 # PR Label names
 LABEL_COOP_REVIEW = "Coop Review"
 LABEL_FT_REVIEW = "Review"
@@ -66,10 +69,17 @@ def show_standup_table(command, sender):
 def show_umarfc(command, sender):
     print
     'in show_umarfc func'
+    dm_channel = slack_client.api_call("conversations.open", users=sender)['channel']['id']
     if (sender in BOX_4): 
-        return show_table(command, sender, BOX_4)
+        return {
+            'text': show_table(command, sender, BOX_4),
+            'channel': dm_channel
+        }
     else:
-        return "YOUR NOT PART OF THE UAMR FOTBALL CLUB"
+        return {
+            'text': "YOUR NOT PART OF THE UAMR FOTBALL CLUB",
+            'channel': dm_channel
+        }
 
 def drop_table(command, sender, table=BOX_1):
     print
@@ -101,7 +111,8 @@ def list_commands(command, sender):
     'in list_commands func'
     commandList = 'Here are a list of commands:\n'
     for key, value in CHOICES.items():
-        commandList += (key + '\n')
+        if (key not in FAKE_FUNCTIONS):
+            commandList += (key + '\n')
     commandList += "For a full explanation of all commands, view the README here:\n"
     commandList += "https://github.com/hubdoc/codereview-slackbot/blob/master/README.md"
     return commandList
@@ -187,7 +198,6 @@ def remove_from_umarfc(command, sender, table=BOX_4):
     else:
         print
         'User is not currently in the fanclub'
-
 
 def assign_reviewer(command, sender, table=BOX_1):
     message = {'text': 'The pull request does not exist!'}
@@ -303,7 +313,8 @@ def sort_help():
     "in sort_help"
     sortList = "Here is the list of sorts:\n"
     for key in SORTS.keys():
-        sortList += (key + '\n')
+        if (key not in FAKE_SORTS):
+            sortList += (key + '\n')
     sortList += "You can probably figure out what each one is ;)"
     return sortList
 
@@ -332,7 +343,10 @@ def choose_standup_order(command, sender, table=BOX_3):
         for member in temp: 
             tableString += member
         
-        return tableString
+        return {
+            'text': tableString,
+            'channel': slack_client.api_call("conversations.open", users=sender)['channel']['id'] if command_string[1] == 'umar' else None
+        }
 
 def alpha_order(command, sender, table=BOX_3):
     return sorted(map(get_name, table))
@@ -461,14 +475,6 @@ def handle_command(command, channel, sender):
     
     # This is where you start to implement more commands!
     command_switch = command.split(' ')[0]
-    '''
-    command_arr = command.split(' ')
-    if (len(command_arr) >= 2):
-        channel = channel if ... else sender
-    '''
-    
-    dm_channel = slack_client.api_call("conversations.open", users=sender)['channel']['id']
-    channel = dm_channel if (command_switch == 'umarfc') else channel
 
     response = command_list(command_switch, command, sender)
 
@@ -478,6 +484,12 @@ def handle_command(command, channel, sender):
             "chat.postMessage",
             channel=channel,
             text=response or default_response
+        )
+    elif (response['text']):
+        slack_client.api_call(
+            "chat.postMessage",
+            channel=response['channel'] if response['channel'] else channel,
+            text=response['text']
         )
     else:
         slack_client.api_call(
