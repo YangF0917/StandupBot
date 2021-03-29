@@ -27,7 +27,7 @@ suadd `<@user>...`:
 suremove `<@user>`:
 - removes the mentioned user from the standup table
 
-sort `<SortType> <@user>`:
+sort `<SortType> <Option>`:
 - performs the sorting with the SortType specified, user field for volunteering is optional
 
 ### SortTypes
@@ -42,3 +42,13 @@ length
 
 random
 - creates a random standup order
+
+### Options
+pickme
+- volunteer yourself to go first
+
+last
+- put yourself last on the list
+
+`<@user>`
+- select a user to go first
