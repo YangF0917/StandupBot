@@ -27,6 +27,7 @@ CHOICES = {}
 SORTS = {}
 FAKE_FUNCTIONS = ['umarfc']
 FAKE_SORTS = ['umar']
+NUMBER_ENDPOINTS = ['trivia', 'year', 'date', 'math']
 
 # PR Label names
 LABEL_COOP_REVIEW = "Coop Review"
@@ -71,7 +72,7 @@ def show_umarfc(command, sender):
     print
     'in show_umarfc func'
     dm_channel = slack_client.api_call("conversations.open", users=sender)['channel']['id']
-    if (sender in BOX_4): 
+    if (sender in BOX_4):
         return {
             'text': show_table(command, sender, BOX_4),
             'channel': dm_channel
@@ -316,7 +317,7 @@ def sort_help():
     for key in SORTS.keys():
         if (key not in FAKE_SORTS):
             sortList += (key + '\n')
-    sortList += "You can probably figure out what each one is ;)"
+    sortList += "You can probably figure out what each one is ;)\nOr you could just read the documentation on https://github.com/YangF0917/ACJBot"
     return sortList
 
 def choose_standup_order(command, sender, table=BOX_3):
@@ -329,21 +330,21 @@ def choose_standup_order(command, sender, table=BOX_3):
 
     if len(table) < 1:
         return 'The table is empty!'
-    else: 
+    else:
         tableString = 'This week\'s standup order:\n'
         temp = SORTS[command_string[1]](command, sender)
         if (len(command_string) > 2 and command_string[2] == "pickme"):
             sender_name = get_name(sender)
             temp.insert(0, temp.pop(temp.index(sender_name))) if sender_name in temp else temp
         if (len(command_string) > 2 and command_string[2] == "last"):
-            sender_name = get_name(sender) 
+            sender_name = get_name(sender)
             temp.append(temp.pop(temp.index(sender_name))) if sender_name in temp else temp
         elif (len(command_string) > 2):
-            coolguy = [i for i in temp if command_string[2] in i]
-            temp.insert(0, temp.pop(temp.index(coolguy[0]))) if len(coolguy) else temp
-        for member in temp: 
+            match = re.search(MENTION_REGEX, command_string[2])
+            volunteer = [get_name(match.group(1))]
+            temp.insert(0, temp.pop(temp.index(volunteer[0]))) if len(volunteer) else temp
+        for member in temp:
             tableString += member
-        
         return {
             'text': tableString,
             'channel': slack_client.api_call("conversations.open", users=sender)['channel']['id'] if command_string[1] == 'umar' else None
@@ -354,7 +355,7 @@ def alpha_order(command, sender, table=BOX_3):
 
 def reverse_alpha_order(command, sender, table=BOX_3):
     return sorted(map(get_name, table), reverse=True)
-  
+
 def name_length_order(command, sender, table=BOX_3):
     return sorted(map(get_name, table), key = len)
 
@@ -363,22 +364,32 @@ def randomize_standup(command, sender, table=BOX_3):
     random.shuffle(users)
     return map(get_name, users)
 
+def advice(command, sender):
+    advice_obj = requests.get('https://api.adviceslip.com/advice')
+    # theres 217 unique advice slips
+    return str(advice_obj.json()['slip']['advice'])
+
+def number(command, sender):
+    random_endpoint = NUMBER_ENDPOINTS[random.randrange(4)]
+    number_obj = requests.get('http://numbersapi.com/random/' + random_endpoint + '?json')
+    return str(number_obj.json()['text'])
+
 def umar(command, sender, random = False, table = BOX_3):
     slack_client.api_call("conversations.open", users=sender)['channel']['id']
     command_string = command.split(' ')
     num_umars = 10 if (len(command_string) < 3 or not is_valid_number(command_string[2])) else int(command_string[2])
     if (num_umars > 15):
         add_to_umarfanclub(command, sender)
-        return ["You're obsessed with Umar. Welcome to the Umar fanclub :eyes:"] 
+        return ["Welcome to the Umar fanclub :eyes:"]
     elif (num_umars < 1):
         remove_from_umarfc(command, sender)
-        return ["This is a true :umar-beatdown:"]
-    return [umar for umar in filter(lambda name: "umar" in name.lower(), map(get_name, table))] * num_umars
+        return ["You've been removed from the club"]
+    return [name for name in filter(lambda name: "umar" in name.lower(), map(get_name, table))] * num_umars
 
 def is_valid_number(string):
     if string[0] == "-":
         string = string[1:]
-    for i in string: 
+    for i in string:
         if (ord(i) < ord('0') or ord(i) > ord('9')):
             return False
     return True
@@ -411,6 +422,8 @@ CHOICES['ftvolunteer'] = high_volunteer
 CHOICES['wip'] = move_to_wip
 CHOICES['sort'] = choose_standup_order
 CHOICES['umarfc'] = show_umarfc
+CHOICES['advice'] = advice
+CHOICES['number'] = number
 
 # sorts
 SORTS['alpha'] = alpha_order
@@ -475,7 +488,7 @@ def handle_command(command, channel, sender):
 
     # Finds and executes the given command, filling in response
     response = None
-    
+
     # This is where you start to implement more commands!
     command_switch = command.split(' ')[0]
 
