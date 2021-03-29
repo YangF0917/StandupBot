@@ -9,4 +9,6 @@ Slack bot for creating standup order
 4. Install requirements: `pip install slackclient==1.3.2 dotenv`
 5. Export your slack token: `export SLACK_BOT_TOKEN='(bot user access token)'`
 
-Now (in theory) you can run the bot locally with `python3 main.py`.
+Now (in theory) you can run the bot locally with `python3 main.py` or `py main.py` depending on what version is being run.
+
+## Features
