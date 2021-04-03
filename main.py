@@ -46,7 +46,7 @@ def show_table(command, sender, table=BOX_3):
     else:
         tableString = 'The table contains:\n'
         for member in table:
-            reviewer = slack_client.api_call("users.info", user=member) 
+            reviewer = slack_client.api_call("users.info", user=member)
             tableString += (reviewer['user']['name'] + '\n')
         return tableString
 
@@ -155,7 +155,7 @@ def add_to_table(command, sender, group=None, table=BOX_3):
             else:
                 return 'Users to add must be in the form of "@USER"'
 
-        return '{} users added to the table!'.format(users_added)
+        return '{users_added} users added to the table!'#.format(users_added)
     return 'No user to add'
 
 def add_to_standup_table(command, sender):
