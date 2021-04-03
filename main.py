@@ -201,8 +201,7 @@ def choose_standup_order(command, sender, table=BOX_3):
         elif (len(command_string) > 2 and command_string[2] == "last"):
             sender_name = get_name(sender)
             temp.append(temp.pop(temp.index(sender_name))) if sender_name in temp else temp
-        elif (command_string[1] == 'umar'): print('umar')
-        elif (len(command_string) > 2):
+        elif (len(command_string) > 2 and command_string[1] != 'umar'):
             match = re.search(MENTION_REGEX, command_string[2])
             volunteer = [get_name(match.group(1))]
             temp.insert(0, temp.pop(temp.index(volunteer[0]))) if len(volunteer) else temp
@@ -222,6 +221,9 @@ def reverse_alpha_order(command, sender, table=BOX_3):
 
 def name_length_order(command, sender, table=BOX_3):
     return sorted(map(get_name, table), key = len)
+
+def rev_name_length_order(command, sender, table=BOX_3):
+    return sorted(map(get_name, table), key = len, reverse = True)
 
 def randomize_standup(command, sender, table=BOX_3):
     users = [mem for mem in table]
@@ -280,6 +282,7 @@ CHOICES['number'] = number
 SORTS['alpha'] = alpha_order
 SORTS['ralpha'] = reverse_alpha_order
 SORTS['length'] = name_length_order
+SORTS['rlength'] = rev_name_length_order
 SORTS['random'] = randomize_standup
 SORTS['umar'] = umar
 
@@ -363,7 +366,7 @@ def handle_command(command, channel, sender):
 
 if __name__ == "__main__":
     if slack_client.rtm_connect(with_team_state=False, auto_reconnect=True):
-        print("Code Review Robin connected and running!")
+        print("ACJ Bot connected and running!")
         # Read bot's user ID by calling web API method `auth.test`
         codereviewbot_id = slack_client.api_call("auth.test")["user_id"]
         while True:
