@@ -7,7 +7,6 @@ import json
 import random
 import requests
 
-
 # load environment variables
 from os.path import join, dirname
 from dotenv import load_dotenv, find_dotenv
@@ -28,8 +27,10 @@ SORTS = {}
 FAKE_FUNCTIONS = ['umarfc']
 FAKE_SORTS = ['umar']
 NUMBER_ENDPOINTS = ['trivia', 'year', 'date', 'math']
+TEXT_FILE = lambda name: "standup_" + name + ".txt"
 
 # PR Label names
+BOX_1 = None # default box
 member_list = open("standup.txt", "r") # standup list
 BOX_3 = deque(filter(None, member_list.read().split('\n')))
 member_list.close()
@@ -52,7 +53,15 @@ def show_table(command, sender, table=BOX_3):
 def show_standup_table(command, sender):
     print
     'in show_standup_table func'
-    return show_table(command, sender, BOX_3)
+    commands = command.split(' ')
+    if (len(commands) < 2):
+        return show_table(command, sender, BOX_3)
+    else:
+        try:
+            file = open(TEXT_FILE(commands[1].lower()), 'r')
+            return show_table(command, sender, deque(filter(None, file.read().split('\n'))))
+        except:
+            return "The standup list does not exist"
 
 def show_umarfc(command, sender):
     print
@@ -69,20 +78,38 @@ def show_umarfc(command, sender):
             'channel': dm_channel
         }
 
-def drop_table(command, sender, table=BOX_3):
+def drop_table(command, sender, table=BOX_3, name=None):
     print
     'in drop_table func'
-    if len(table) < 1:
-        return 'The table is already empty'
+    name = name.lower()
+    if (name):
+        try:
+            file = open("standup_"+name+".txt", "r")
+            table = deque(filter(None, file.read().split('\n')))
+            if len(table) < 1:
+                return 'The table is already empty'
+            else:
+                table.clear()
+                save_table_to_file(table, name)
+                return 'The table has been cleared'
+        except:
+            return "The table does not exist"
     else:
-        table.clear()
-        save_table_to_file(table)
-        return 'The table has been cleared'
+        if len(table) < 1:
+            return 'The table is already empty'
+        else:
+            table.clear()
+            save_table_to_file(table)
+            return 'The table has been cleared'
 
 def drop_standup_table(command, sender):
+    commands = command.split(' ')
     print
     'in drop_standup_table func'
-    return drop_table(command, sender, BOX_3)
+    if (len(commands) < 2):
+        return drop_table(command, sender, BOX_3)
+    else:
+        return drop_table(command, sender, BOX_1, commands[1])
 
 def drop_umarfc(command, sender):
     print
@@ -97,22 +124,27 @@ def list_commands(command, sender):
         if (key not in FAKE_FUNCTIONS):
             commandList += (key + '\n')
     commandList += "For a full explanation of all commands, view the README here:\n"
-    commandList += "https://github.com/hubdoc/codereview-slackbot/blob/master/README.md"
+    commandList += "https://github.com/YangF0917/ACJBot"
     return commandList
 
-def add_to_table(command, sender, table=BOX_3):
+def add_to_table(command, sender, group=None, table=BOX_3):
     print
     'in add_to_BOX_1 func'
-    message = command.split(' ')
+    message = [n for n in filter(lambda k: k!=group, command.split(' '))] if group else command.split(' ')
+    group = group.lower()
     users_added = 0
-    print
-    message
     if len(message) > 1:
         for token in range(1, len(message)):
             match = re.search(ADD_USER_REGEX, message[token])
             if match:
-                if match.group(1) == 'U936HFKUJ':
-                    return "You cannot add me to do reviews >:("
+                if group:
+                    file = open(TEXT_FILE(group), "a")
+                    mem_list = open(TEXT_FILE(group), "r")
+                    BOX = deque(filter(None, mem_list.read().split('\n')))
+                    if (match.group(1) not in BOX):
+                        BOX.append(match.group(1))
+                        save_table_to_file(BOX, group)
+                        users_added += 1
                 elif match.group(1) not in table:
                     table.append(match.group(1))
                     save_table_to_file(table)
@@ -129,7 +161,11 @@ def add_to_table(command, sender, table=BOX_3):
 def add_to_standup_table(command, sender):
     print
     'in add_to_standup_table func'
-    return add_to_table(command, sender, BOX_3)
+    params = command.split(' ')
+    if (len(params) <= 2):
+        return add_to_table(command, sender, None, BOX_3)
+    elif (re.search(ADD_USER_REGEX, params[1]):
+        return add_to_table(command, sender, params[1])
 
 def add_to_umarfanclub(command, sender, table = BOX_4):
     print
@@ -294,8 +330,10 @@ def command_list(index, command, sender):
         result = result(command, sender)
     return result
 
-def save_table_to_file(table=BOX_3):
-    if(table == BOX_3):
+def save_table_to_file(table=BOX_3, name=None):
+    if (name):
+        member_list = open(TEXT_FILE(name), "w")
+    elif(table == BOX_3):
         member_list = open("standup.txt", "w")
     elif(table == BOX_4):
         member_list = open("backup.txt", "w")
