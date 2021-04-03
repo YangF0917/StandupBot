@@ -12,19 +12,19 @@ Slack bot for creating standup order
 Now (in theory) you can run the bot locally with `python3 main.py` or `py main.py` depending on what version is being run.
 
 ## Features
-All commands take input separeated by a single space character
-Currently the commands supported are as follows
+All commands take input separeated by a single space character.
+Currently the commands supported are as follows:
 
-sushowtable:
+showtable:
 - shows the standup table
 
-sudroptable:
+droptable:
 - clears the standup table
 
-suadd `<@user>...`:
+add `<@user>...`:
 - adds the mentioned users to the standup table
 
-suremove `<@user>`:
+remove `<@user>`:
 - removes the mentioned user from the standup table
 
 sort `<SortType> <Option>`:

@@ -46,7 +46,7 @@ def show_table(command, sender, table=BOX_3):
     else:
         tableString = 'The table contains:\n'
         for member in table:
-            reviewer = slack_client.api_call("users.info", user=member)
+            reviewer = slack_client.api_call("users.info", user=member) 
             tableString += (reviewer['user']['name'] + '\n')
         return tableString
 
@@ -81,7 +81,7 @@ def show_umarfc(command, sender):
 def drop_table(command, sender, table=BOX_3, name=None):
     print
     'in drop_table func'
-    name = name.lower()
+    name = name if not name else name.lower()
     if (name):
         try:
             file = open("standup_"+name+".txt", "r")
@@ -131,7 +131,7 @@ def add_to_table(command, sender, group=None, table=BOX_3):
     print
     'in add_to_BOX_1 func'
     message = [n for n in filter(lambda k: k!=group, command.split(' '))] if group else command.split(' ')
-    group = group.lower()
+    group = group if not group else group.lower()
     users_added = 0
     if len(message) > 1:
         for token in range(1, len(message)):
@@ -164,7 +164,7 @@ def add_to_standup_table(command, sender):
     params = command.split(' ')
     if (len(params) <= 2):
         return add_to_table(command, sender, None, BOX_3)
-    elif (re.search(ADD_USER_REGEX, params[1]):
+    elif (re.search(ADD_USER_REGEX, params[1])):
         return add_to_table(command, sender, params[1])
 
 def add_to_umarfanclub(command, sender, table = BOX_4):
@@ -304,11 +304,11 @@ def get_name(member):
 
 # === BOT COMMAND MAPPING ===
 
-CHOICES['sushowtable'] = show_standup_table
-CHOICES['sudroptable'] = drop_standup_table
+CHOICES['showtable'] = show_standup_table
+CHOICES['droptable'] = drop_standup_table
 CHOICES['help'] = list_commands
-CHOICES['suadd'] = add_to_standup_table
-CHOICES['suremove'] = remove_from_standup_table
+CHOICES['add'] = add_to_standup_table
+CHOICES['remove'] = remove_from_standup_table
 CHOICES['sort'] = choose_standup_order
 CHOICES['umarfc'] = show_umarfc
 CHOICES['advice'] = advice
@@ -382,7 +382,7 @@ def handle_command(command, channel, sender):
 
     response = command_list(command_switch, command, sender)
     # Sends the response back to the channel
-    if isinstance(response, str) or isinstance(response, basestring) or response is None:
+    if isinstance(response, str) or isinstance(response, str) or response is None:
         slack_client.api_call(
             "chat.postMessage",
             channel=channel,
