@@ -1,8 +1,10 @@
+# coding: utf8
 import os
 import time
 import re
 from slackclient import SlackClient
 from collections import *
+from string import Template
 import json
 import random
 import requests
@@ -103,7 +105,9 @@ def list_commands(command, sender):
 def add_to_table(command, sender, table=BOX_3):
     print
     'in add_to_BOX_1 func'
-    message = command.split(' ')
+    message = [n for n in filter(lambda k: k!=group, command.split(' '))] if group else command.split(' ')
+    group = group if group is None else group.lower()
+    valid_team = group in BOX_TEAMS
     users_added = 0
     print
     message
@@ -111,8 +115,14 @@ def add_to_table(command, sender, table=BOX_3):
         for token in range(1, len(message)):
             match = re.search(ADD_USER_REGEX, message[token])
             if match:
-                if match.group(1) == 'U936HFKUJ':
-                    return "You cannot add me to do reviews >:("
+                if group and valid_team:
+                    file = open(TEXT_FILE(group), "a")
+                    mem_list = open(TEXT_FILE(group), "r")
+                    BOX = deque(filter(None, mem_list.read().split('\n')))
+                    if (match.group(1) not in BOX):
+                        BOX.append(match.group(1))
+                        save_table_to_file(BOX, group)
+                        users_added += 1
                 elif match.group(1) not in table:
                     table.append(match.group(1))
                     save_table_to_file(table)
@@ -122,8 +132,8 @@ def add_to_table(command, sender, table=BOX_3):
                     'User already exists at the table'
             else:
                 return 'Users to add must be in the form of "@USER"'
-
-        return '{} users added to the table!'.format(users_added)
+        word = 'user' if users_added == 1 else 'users'
+        return Template('$users_added $word added to the table!').substitute(users_added = users_added, word=word) if valid_team else 'Team does not exist, please call `@acj addteam <teamname>` to create the team'
     return 'No user to add'
 
 def add_to_standup_table(command, sender):
@@ -238,7 +248,7 @@ def advice(command, sender):
 def number(command, sender):
     random_endpoint = NUMBER_ENDPOINTS[random.randrange(4)]
     number_obj = requests.get('http://numbersapi.com/random/' + random_endpoint + '?json')
-    return str(number_obj.json()['text'])
+    return number_obj.json()['text']
 
 def umar(command, sender, random = False, table = BOX_3):
     slack_client.api_call("conversations.open", users=sender)['channel']['id']
@@ -263,6 +273,49 @@ def is_valid_number(string):
 def get_name(member):
     temp = slack_client.api_call("users.info", user=member)
     return temp['user']['name'] + '\n'
+
+def add_team(command, sender, table = BOX_TEAMS):
+    print
+    'in add_team function'
+    command_string = command.split(' ')
+    if len(command_string) < 2:
+        return 'No team to add'
+    else: 
+        team_to_add = command_string[1] 
+        if team_to_add:
+            if (team_to_add not in table):
+                table.append(team_to_add + '\n')
+                save_table_to_file(table)
+            else:
+                return 'Team already exists at the table'
+        return Template('Added $team_to_add to the Teams table!').substitute(team_to_add=team_to_add)
+
+def show_teams(command, seeker, table = BOX_TEAMS):      
+    print
+    'in show_teams func'
+    if len(table) < 1:
+        return 'The table is empty!'
+    else:
+        tableString = 'The table contains:\n'
+        for member in table:
+            tableString += member
+        return tableString
+
+def remove_team(command, sender, table=BOX_TEAMS):
+    print
+    'in remove_team func'
+    message = command.split(' ')
+    if len(message) > 1:
+        team = message[1]
+        if team:
+            if table.count(team) < 1:
+                return 'No team found to remove'
+            else:
+                # top_of_list = table[0]
+                table.remove(team)
+                save_table_to_file(table)
+                return '<{}> removed from the table!'.format(team)
+    return 'Try "remove <team name>" to remove a team of the table.'
 
 # === ALL POSSIBLE BOT COMMANDS END ===
 
