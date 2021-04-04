@@ -12,23 +12,40 @@ Slack bot for creating standup order
 Now (in theory) you can run the bot locally with `python3 main.py` or `py main.py` depending on what version is being run.
 
 ## Features
-All commands take input separeated by a single space character.
+All commands take input separated by a single space character. Fields that are italicized are optional.
 Currently the commands supported are as follows:
 
-showtable:
-- shows the standup table
+showtable *`<str>`*:
+- shows the standup table, if an argument is given, it will return the standup table with the corresponding name
 
-droptable:
-- clears the standup table
+droptable *`<str>`*:
+- clears the standup table, if an argument is given, it will clear the standup table with the corresponding name
 
-add `<@user>...`:
-- adds the mentioned users to the standup table
+add *`<str>`* `<@user>...`:
+- adds the mentioned users to the standup table, if the string argument is given, it will add the users to the corresponding table
 
 remove `<@user>`:
 - removes the mentioned user from the standup table
+- future patch to remove from specific tables
 
 sort `<SortType> <Option>`:
 - performs the sorting with the SortType specified, user field for volunteering is optional
+- future patch to remove from specific tables
+
+help:
+- brings up a list of all of the functions that the bot supports
+
+addteam `<str>`:
+- creates a new team with the name specified
+
+showteams:
+- lists out all of the current active teams
+
+removeteam `<str>`:
+- deletes the team with the name specified if it exists
+
+clearteams:
+- coming in a future patch
 
 advice:
 - generates advice
