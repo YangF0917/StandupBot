@@ -6,25 +6,25 @@ Slack bot for creating standup order
 2. Type `virtualenv starterbot` (you can replace `starterbot` with whatever you want your virtual environment to be called; it's not important)
    * You may need to install this command - on WSL, I needed to run `sudo apt install python3-virtualenv`
 3. Activate the virtual environment with `starterbot/bin/activate` (again, replace `starterbot` with whatever you decided to name your virtual environment)
-4. Install requirements: `pip install slackclient==1.3.2 dotenv`
+4. Install requirements: `pip install -r requirements.txt`
 5. Export your slack token: `export SLACK_BOT_TOKEN='(bot user access token)'`
 
 Now (in theory) you can run the bot locally with `python3 main.py` or `py main.py` depending on what version is being run.
 
 ## Features
-All commands take input separeated by a single space character
-Currently the commands supported are as follows
+All commands take input separeated by a single space character.
+Currently the commands supported are as follows:
 
-sushowtable:
+showtable:
 - shows the standup table
 
-sudroptable:
+droptable:
 - clears the standup table
 
-suadd `<@user>...`:
+add `<@user>...`:
 - adds the mentioned users to the standup table
 
-suremove `<@user>`:
+remove `<@user>`:
 - removes the mentioned user from the standup table
 
 sort `<SortType> <Option>`:

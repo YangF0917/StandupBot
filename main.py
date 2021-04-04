@@ -8,7 +8,7 @@ from string import Template
 import json
 import random
 import requests
-
+import schedule
 
 # load environment variables
 from os.path import join, dirname
@@ -21,7 +21,7 @@ slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
 bot_id = None
 
 # CONSTANTS
-RTM_READY_DELAY = 1 # 1 second delay between reading from RTM
+RTM_READY_DELAY = 1 # 1 second delay between reading from RTM   
 EXAMPLE_COMMAND = "help"
 MENTION_REGEX = "^<@(|[WU].+?)>(.*)"
 ADD_USER_REGEX = "<@(|[WU].+?)>"
@@ -30,8 +30,13 @@ SORTS = {}
 FAKE_FUNCTIONS = ['umarfc']
 FAKE_SORTS = ['umar']
 NUMBER_ENDPOINTS = ['trivia', 'year', 'date', 'math']
+TEXT_FILE = lambda name: "standup_" + name + ".txt"
 
 # PR Label names
+BOX_1 = None # default box
+member_list = open("teams.txt", "r") # standup list
+BOX_TEAMS = deque(filter(None, member_list.read().split('\n')))
+member_list.close()
 member_list = open("standup.txt", "r") # standup list
 BOX_3 = deque(filter(None, member_list.read().split('\n')))
 member_list.close()
@@ -54,7 +59,15 @@ def show_table(command, sender, table=BOX_3):
 def show_standup_table(command, sender):
     print
     'in show_standup_table func'
-    return show_table(command, sender, BOX_3)
+    commands = command.split(' ')
+    if (len(commands) < 2):
+        return show_table(command, sender, BOX_3)
+    else:
+        try:
+            file = open(TEXT_FILE(commands[1].lower()), 'r')
+            return show_table(command, sender, deque(filter(None, file.read().split('\n'))))
+        except:
+            return "The standup list does not exist"
 
 def show_umarfc(command, sender):
     print
@@ -71,20 +84,38 @@ def show_umarfc(command, sender):
             'channel': dm_channel
         }
 
-def drop_table(command, sender, table=BOX_3):
+def drop_table(command, sender, table=BOX_3, name=None):
     print
     'in drop_table func'
-    if len(table) < 1:
-        return 'The table is already empty'
+    name = name if not name else name.lower()
+    if (name):
+        try:
+            file = open("standup_"+name+".txt", "r")
+            table = deque(filter(None, file.read().split('\n')))
+            if len(table) < 1:
+                return 'The table is already empty'
+            else:
+                table.clear()
+                save_table_to_file(table, name)
+                return 'The table has been cleared'
+        except:
+            return "The table does not exist"
     else:
-        table.clear()
-        save_table_to_file(table)
-        return 'The table has been cleared'
+        if len(table) < 1:
+            return 'The table is already empty'
+        else:
+            table.clear()
+            save_table_to_file(table)
+            return 'The table has been cleared'
 
 def drop_standup_table(command, sender):
+    commands = command.split(' ')
     print
     'in drop_standup_table func'
-    return drop_table(command, sender, BOX_3)
+    if (len(commands) < 2):
+        return drop_table(command, sender, BOX_3)
+    else:
+        return drop_table(command, sender, BOX_1, commands[1])
 
 def drop_umarfc(command, sender):
     print
@@ -99,18 +130,15 @@ def list_commands(command, sender):
         if (key not in FAKE_FUNCTIONS):
             commandList += (key + '\n')
     commandList += "For a full explanation of all commands, view the README here:\n"
-    commandList += "https://github.com/hubdoc/codereview-slackbot/blob/master/README.md"
+    commandList += "https://github.com/YangF0917/ACJBot"
     return commandList
 
-def add_to_table(command, sender, table=BOX_3):
+def add_to_table(command, sender, group=None, table=BOX_3):
     print
     'in add_to_BOX_1 func'
     message = [n for n in filter(lambda k: k!=group, command.split(' '))] if group else command.split(' ')
     group = group if group is None else group.lower()
-    valid_team = group in BOX_TEAMS
     users_added = 0
-    print
-    message
     if len(message) > 1:
         for token in range(1, len(message)):
             match = re.search(ADD_USER_REGEX, message[token])
@@ -139,7 +167,11 @@ def add_to_table(command, sender, table=BOX_3):
 def add_to_standup_table(command, sender):
     print
     'in add_to_standup_table func'
-    return add_to_table(command, sender, BOX_3)
+    params = command.split(' ')
+    if (len(params) <= 2 or re.search(ADD_USER_REGEX, params[1])):
+        return add_to_table(command, sender, None, BOX_3)
+    else:
+        return add_to_table(command, sender, params[1])
 
 def add_to_umarfanclub(command, sender, table = BOX_4):
     print
@@ -321,16 +353,18 @@ def remove_team(command, sender, table=BOX_TEAMS):
 
 # === BOT COMMAND MAPPING ===
 
-CHOICES['sushowtable'] = show_standup_table
-CHOICES['sudroptable'] = drop_standup_table
+CHOICES['showtable'] = show_standup_table
+CHOICES['droptable'] = drop_standup_table
 CHOICES['help'] = list_commands
-CHOICES['suadd'] = add_to_standup_table
-CHOICES['suremove'] = remove_from_standup_table
+CHOICES['add'] = add_to_standup_table
+CHOICES['remove'] = remove_from_standup_table
 CHOICES['sort'] = choose_standup_order
 CHOICES['umarfc'] = show_umarfc
 CHOICES['advice'] = advice
 CHOICES['number'] = number
-
+CHOICES['addteam'] = add_team
+CHOICES['showteams'] = show_teams
+CHOICES['removeteam'] = remove_team
 # sorts
 SORTS['alpha'] = alpha_order
 SORTS['ralpha'] = reverse_alpha_order
@@ -341,17 +375,44 @@ SORTS['umar'] = umar
 
 # === BOT COMMAND MAPPING END ===
 
+def daily_postscrum(channel):
+    slack_client.api_call(
+        "chat.postMessage",
+        channel=channel,
+        text="Postscrum? :eyes:"
+    )
+
+def initialize_scheduler():
+    # extend: read from a file, do this for all channel,time pairs
+    ps_list = open("postscrum.txt", "r") # standup list
+    BOX_TEAMS = deque(filter(None, ps_list.read().split('\n')))
+    ps_list.close()
+    schedule.clear()
+    for pair in BOX_TEAMS:
+        p = pair.split(' ')
+        channel = p[0]
+        time = p[1]
+        schedule.every().monday.at(time).do(daily_postscrum, channel=channel)
+        schedule.every().tuesday.at(time).do(daily_postscrum, channel=channel)
+        schedule.every().wednesday.at(time).do(daily_postscrum, channel=channel)
+        schedule.every().thursday.at(time).do(daily_postscrum, channel=channel)
+        schedule.every().friday.at(time).do(daily_postscrum, channel=channel)
+
 def command_list(index, command, sender):
     result = CHOICES.get(index, None)
     if result != None:
         result = result(command, sender)
     return result
 
-def save_table_to_file(table=BOX_3):
-    if(table == BOX_3):
+def save_table_to_file(table=BOX_3, name=None):
+    if (name):
+        member_list = open(TEXT_FILE(name), "w")
+    elif(table == BOX_3):
         member_list = open("standup.txt", "w")
     elif(table == BOX_4):
         member_list = open("backup.txt", "w")
+    elif(table == BOX_TEAMS):
+        member_list = open("teams.txt", "w")
     else:
         print("something went wrong!")
     file_buffer = ''
@@ -394,10 +455,10 @@ def handle_command(command, channel, sender):
 
     # This is where you start to implement more commands!
     command_switch = command.split(' ')[0]
-
+    # print (channel)
     response = command_list(command_switch, command, sender)
     # Sends the response back to the channel
-    if isinstance(response, str) or isinstance(response, basestring) or response is None:
+    if isinstance(response, str) or isinstance(response, str) or response is None:
         slack_client.api_call(
             "chat.postMessage",
             channel=channel,
@@ -422,7 +483,9 @@ if __name__ == "__main__":
         print("ACJ Bot connected and running!")
         # Read bot's user ID by calling web API method `auth.test`
         codereviewbot_id = slack_client.api_call("auth.test")["user_id"]
+        initialize_scheduler()
         while True:
+            schedule.run_pending()
             command, channel, sender = parse_bot_commands(slack_client.rtm_read())
             if command:
                 handle_command(command, channel, sender)
