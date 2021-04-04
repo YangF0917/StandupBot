@@ -4,7 +4,6 @@ import time
 import re
 from slackclient import SlackClient
 from collections import *
-from string import Template
 import json
 import random
 import requests
@@ -64,8 +63,8 @@ def show_standup_table(command, sender):
         return show_table(command, sender, BOX_3)
     else:
         try:
-            file = open(TEXT_FILE(commands[1].lower()), 'r')
-            return show_table(command, sender, deque(filter(None, file.read().split('\n'))))
+            with open(TEXT_FILE(commands[1].lower()), 'r') as file:
+                return show_table(command, sender, deque(filter(None, file.read().split('\n'))))
         except:
             return "The standup list does not exist"
 
@@ -90,8 +89,9 @@ def drop_table(command, sender, table=BOX_3, name=None):
     name = name if not name else name.lower()
     if (name):
         try:
-            file = open("standup_"+name+".txt", "r")
-            table = deque(filter(None, file.read().split('\n')))
+            with open("standup_"+name+".txt", "r") as file:
+                table = deque(filter(None, file.read().split('\n')))
+            
             if len(table) < 1:
                 return 'The table is already empty'
             else:
@@ -138,16 +138,18 @@ def add_to_table(command, sender, group=None, table=BOX_3):
     'in add_to_BOX_1 func'
     message = [n for n in filter(lambda k: k!=group, command.split(' '))] if group else command.split(' ')
     group = group if group is None else group.lower()
-    valid_team = group in BOX_TEAMS
+    valid_team = group in BOX_TEAMS if group else True
     users_added = 0
     if len(message) > 1:
         for token in range(1, len(message)):
             match = re.search(ADD_USER_REGEX, message[token])
             if match:
                 if group and valid_team:
-                    file = open(TEXT_FILE(group), "a")
-                    mem_list = open(TEXT_FILE(group), "r")
+                    file = open(TEXT_FILE(group).encode('utf8'), "a")
+                    file.close()
+                    mem_list = open(TEXT_FILE(group).encode('utf8'), "r")
                     BOX = deque(filter(None, mem_list.read().split('\n')))
+                    mem_list.close()
                     if (match.group(1) not in BOX):
                         BOX.append(match.group(1))
                         save_table_to_file(BOX, group)
@@ -162,7 +164,7 @@ def add_to_table(command, sender, group=None, table=BOX_3):
             else:
                 return 'Users to add must be in the form of "@USER"'
         word = 'user' if users_added == 1 else 'users'
-        return Template('$users_added $word added to the table!').substitute(users_added = users_added, word=word) if valid_team else 'Team does not exist, please call `@acj addteam <teamname>` to create the team'
+        return '{} {} added to the table!'.format(users_added, word) if valid_team else 'Team does not exist, please call `@acj addteam <teamname>` to create the team'
     return 'No user to add'
 
 def add_to_standup_table(command, sender):
@@ -321,7 +323,7 @@ def add_team(command, sender, table = BOX_TEAMS):
                 save_table_to_file(table)
             else:
                 return 'Team already exists at the table'
-        return Template('Added $team_to_add to the Teams table!').substitute(team_to_add=team_to_add)
+        return 'Added {} to the Teams table!'.format(team_to_add)
 
 def show_teams(command, seeker, table = BOX_TEAMS):      
     print
@@ -331,7 +333,7 @@ def show_teams(command, seeker, table = BOX_TEAMS):
     else:
         tableString = 'The table contains:\n'
         for member in table:
-            tableString += member
+            tableString += member + '\n'
         return tableString
 
 def remove_team(command, sender, table=BOX_TEAMS):
@@ -347,7 +349,7 @@ def remove_team(command, sender, table=BOX_TEAMS):
                 # top_of_list = table[0]
                 table.remove(team)
                 save_table_to_file(table)
-                return '<{}> removed from the table!'.format(team)
+                return '<@{}> had <{}> removed from the table!'.format(sender, team)
     return 'Try "remove <team name>" to remove a team of the table.'
 
 # === ALL POSSIBLE BOT COMMANDS END ===
