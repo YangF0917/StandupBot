@@ -24,6 +24,7 @@ RTM_READY_DELAY = 1 # 1 second delay between reading from RTM
 EXAMPLE_COMMAND = "help"
 MENTION_REGEX = "^<@(|[WU].+?)>(.*)"
 ADD_USER_REGEX = "<@(|[WU].+?)>"
+TIME_REGEX = "^([01]?[0-9]|2[0-3]):[0-5][0-9]$"
 CHOICES = {}
 SORTS = {}
 FAKE_FUNCTIONS = ['umarfc']
@@ -350,7 +351,41 @@ def remove_team(command, sender, table=BOX_TEAMS):
                 table.remove(team)
                 save_table_to_file(table)
                 return '<@{}> had <{}> removed from the table!'.format(sender, team)
-    return 'Try "remove <team name>" to remove a team of the table.'
+    return 'Try "remove <team name>" to remove a team from the table.'
+
+def remove_ps(channel, table, index):
+    table.remove(table[index])
+
+# usage: @acj psconfig [time/"stop"]
+def configure_postscrum(command, channel, sender):
+    print
+    'in configure_postscrum func'
+    message = command.split(' ')
+    if len(message) > 1:
+        match = re.search(TIME_REGEX, message[1])
+        if match or message[1] == 'stop':
+            ps_list = open('standup_postscrum.txt', "r") # standup list
+            BOX_PS = deque(filter(None, ps_list.read().split('\n')))
+            ps_list.close()
+            channels_list = list(map(lambda item: item.split(' ')[0], BOX_PS))
+            if match:
+                time_str = ("0" if len(message[1]) == 4 else "") + message[1]
+                entry = "{} {}".format(channel, time_str)
+                if channel in channels_list:
+                    remove_ps(channel, BOX_PS, channels_list.index(channel))
+                BOX_PS.append(entry)            
+                save_table_to_file(BOX_PS, 'postscrum')
+                configure_scheduler()
+                return 'Postscrum messages will appear in this channel at {} every weekday.'.format(time_str)
+            else:
+                if channel in channels_list:
+                    remove_ps(channel, BOX_PS, channels_list.index(channel))
+                    save_table_to_file(BOX_PS, 'postscrum')
+                    configure_scheduler()
+                    return 'Postscrum messages will stop appearing in this channel.'
+                return 'Postscrum messages are not currently set in this channel.'
+    return 'To set postscrum messages to occur every weekday at <24hrtime> in this channel, use "psconfig <24hrtime>". To stop messages, use "psconfig stop".'
+
 
 # === ALL POSSIBLE BOT COMMANDS END ===
 
@@ -385,13 +420,12 @@ def daily_postscrum(channel):
         text="Postscrum? :eyes:"
     )
 
-def initialize_scheduler():
-    # extend: read from a file, do this for all channel,time pairs
-    ps_list = open("postscrum.txt", "r") # standup list
-    BOX_TEAMS = deque(filter(None, ps_list.read().split('\n')))
+def configure_scheduler():
+    ps_list = open("standup_postscrum.txt", "r")
+    BOX_PS = deque(filter(None, ps_list.read().split('\n')))
     ps_list.close()
     schedule.clear()
-    for pair in BOX_TEAMS:
+    for pair in BOX_PS:
         p = pair.split(' ')
         channel = p[0]
         time = p[1]
@@ -458,8 +492,12 @@ def handle_command(command, channel, sender):
 
     # This is where you start to implement more commands!
     command_switch = command.split(' ')[0]
-    # print (channel)
-    response = command_list(command_switch, command, sender)
+
+    if (command_switch == "psconfig"):
+        response = configure_postscrum(command, channel, sender)
+    else:
+        response = command_list(command_switch, command, sender)
+    
     # Sends the response back to the channel
     if isinstance(response, str) or isinstance(response, basestring) or response is None:
         slack_client.api_call(
@@ -486,7 +524,7 @@ if __name__ == "__main__":
         print("ACJ Bot connected and running!")
         # Read bot's user ID by calling web API method `auth.test`
         codereviewbot_id = slack_client.api_call("auth.test")["user_id"]
-        initialize_scheduler()
+        configure_scheduler()
         while True:
             schedule.run_pending()
             command, channel, sender = parse_bot_commands(slack_client.rtm_read())
