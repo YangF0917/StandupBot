@@ -47,6 +47,10 @@ removeteam `<str>`:
 clearteams:
 - coming in a future patch
 
+psconfig `<str>`:
+- 24-hr time: configures postscrum message for the channel to be sent at the time specified
+- 'stop': removes current configuration
+
 advice:
 - generates advice
 
