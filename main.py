@@ -6,6 +6,7 @@ from collections import *
 import json
 import random
 import requests
+import schedule
 
 # load environment variables
 from os.path import join, dirname
@@ -18,7 +19,7 @@ slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
 bot_id = None
 
 # CONSTANTS
-RTM_READY_DELAY = 1 # 1 second delay between reading from RTM
+RTM_READY_DELAY = 1 # 1 second delay between reading from RTM   
 EXAMPLE_COMMAND = "help"
 MENTION_REGEX = "^<@(|[WU].+?)>(.*)"
 ADD_USER_REGEX = "<@(|[WU].+?)>"
@@ -31,6 +32,9 @@ TEXT_FILE = lambda name: "standup_" + name + ".txt"
 
 # PR Label names
 BOX_1 = None # default box
+member_list = open("teams.txt", "r") # standup list
+BOX_TEAMS = deque(filter(None, member_list.read().split('\n')))
+member_list.close()
 member_list = open("standup.txt", "r") # standup list
 BOX_3 = deque(filter(None, member_list.read().split('\n')))
 member_list.close()
@@ -131,7 +135,7 @@ def add_to_table(command, sender, group=None, table=BOX_3):
     print
     'in add_to_BOX_1 func'
     message = [n for n in filter(lambda k: k!=group, command.split(' '))] if group else command.split(' ')
-    group = group if not group else group.lower()
+    group = group if group is None else group.lower()
     users_added = 0
     if len(message) > 1:
         for token in range(1, len(message)):
@@ -154,17 +158,17 @@ def add_to_table(command, sender, group=None, table=BOX_3):
                     'User already exists at the table'
             else:
                 return 'Users to add must be in the form of "@USER"'
-
-        return '{users_added} users added to the table!'#.format(users_added)
+        word = 'user' if users_added == 1 else 'users'
+        return f'{users_added} {word} added to the table!'
     return 'No user to add'
 
 def add_to_standup_table(command, sender):
     print
     'in add_to_standup_table func'
     params = command.split(' ')
-    if (len(params) <= 2):
+    if (len(params) <= 2 or re.search(ADD_USER_REGEX, params[1])):
         return add_to_table(command, sender, None, BOX_3)
-    elif (re.search(ADD_USER_REGEX, params[1])):
+    else:
         return add_to_table(command, sender, params[1])
 
 def add_to_umarfanclub(command, sender, table = BOX_4):
@@ -300,6 +304,49 @@ def get_name(member):
     temp = slack_client.api_call("users.info", user=member)
     return temp['user']['name'] + '\n'
 
+def add_team(command, sender, table = BOX_TEAMS):
+    print
+    'in add_team function'
+    command_string = command.split(' ')
+    if len(command_string) < 2:
+        return 'No team to add'
+    else: 
+        team_to_add = command_string[1] 
+        if team_to_add:
+            if (team_to_add not in table):
+                table.append(team_to_add + '\n')
+                save_table_to_file(table)
+            else:
+                return 'Team already exists at the table'
+        return f'Added {team_to_add} to the Teams table!'
+
+def show_teams(command, seeker, table = BOX_TEAMS):      
+    print
+    'in show_teams func'
+    if len(table) < 1:
+        return 'The table is empty!'
+    else:
+        tableString = 'The table contains:\n'
+        for member in table:
+            tableString += member
+        return tableString
+
+def remove_team(command, sender, table=BOX_TEAMS):
+    print
+    'in remove_team func'
+    message = command.split(' ')
+    if len(message) > 1:
+        team = message[1]
+        if team:
+            if table.count(team) < 1:
+                return 'No team found to remove'
+            else:
+                # top_of_list = table[0]
+                table.remove(team)
+                save_table_to_file(table)
+                return '<{}> removed from the table!'.format(team)
+    return 'Try "remove <team name>" to remove a team of the table.'
+
 # === ALL POSSIBLE BOT COMMANDS END ===
 
 # === BOT COMMAND MAPPING ===
@@ -313,7 +360,9 @@ CHOICES['sort'] = choose_standup_order
 CHOICES['umarfc'] = show_umarfc
 CHOICES['advice'] = advice
 CHOICES['number'] = number
-
+CHOICES['addteam'] = add_team
+CHOICES['showteams'] = show_teams
+CHOICES['removeteam'] = remove_team
 # sorts
 SORTS['alpha'] = alpha_order
 SORTS['ralpha'] = reverse_alpha_order
@@ -323,6 +372,29 @@ SORTS['random'] = randomize_standup
 SORTS['umar'] = umar
 
 # === BOT COMMAND MAPPING END ===
+
+def daily_postscrum(channel):
+    slack_client.api_call(
+        "chat.postMessage",
+        channel=channel,
+        text="Postscrum? :eyes:"
+    )
+
+def initialize_scheduler():
+    # extend: read from a file, do this for all channel,time pairs
+    ps_list = open("postscrum.txt", "r") # standup list
+    BOX_TEAMS = deque(filter(None, ps_list.read().split('\n')))
+    ps_list.close()
+    schedule.clear()
+    for pair in BOX_TEAMS:
+        p = pair.split(' ')
+        channel = p[0]
+        time = p[1]
+        schedule.every().monday.at(time).do(daily_postscrum, channel=channel)
+        schedule.every().tuesday.at(time).do(daily_postscrum, channel=channel)
+        schedule.every().wednesday.at(time).do(daily_postscrum, channel=channel)
+        schedule.every().thursday.at(time).do(daily_postscrum, channel=channel)
+        schedule.every().friday.at(time).do(daily_postscrum, channel=channel)
 
 def command_list(index, command, sender):
     result = CHOICES.get(index, None)
@@ -337,6 +409,8 @@ def save_table_to_file(table=BOX_3, name=None):
         member_list = open("standup.txt", "w")
     elif(table == BOX_4):
         member_list = open("backup.txt", "w")
+    elif(table == BOX_TEAMS):
+        member_list = open("teams.txt", "w")
     else:
         print("something went wrong!")
     file_buffer = ''
@@ -379,7 +453,7 @@ def handle_command(command, channel, sender):
 
     # This is where you start to implement more commands!
     command_switch = command.split(' ')[0]
-
+    # print (channel)
     response = command_list(command_switch, command, sender)
     # Sends the response back to the channel
     if isinstance(response, str) or isinstance(response, str) or response is None:
@@ -407,7 +481,9 @@ if __name__ == "__main__":
         print("ACJ Bot connected and running!")
         # Read bot's user ID by calling web API method `auth.test`
         codereviewbot_id = slack_client.api_call("auth.test")["user_id"]
+        initialize_scheduler()
         while True:
+            schedule.run_pending()
             command, channel, sender = parse_bot_commands(slack_client.rtm_read())
             if command:
                 handle_command(command, channel, sender)
