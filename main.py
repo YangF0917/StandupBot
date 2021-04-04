@@ -138,6 +138,7 @@ def add_to_table(command, sender, group=None, table=BOX_3):
     'in add_to_BOX_1 func'
     message = [n for n in filter(lambda k: k!=group, command.split(' '))] if group else command.split(' ')
     group = group if group is None else group.lower()
+    valid_team = group in BOX_TEAMS
     users_added = 0
     if len(message) > 1:
         for token in range(1, len(message)):
@@ -458,7 +459,7 @@ def handle_command(command, channel, sender):
     # print (channel)
     response = command_list(command_switch, command, sender)
     # Sends the response back to the channel
-    if isinstance(response, str) or isinstance(response, str) or response is None:
+    if isinstance(response, str) or isinstance(response, basestring) or response is None:
         slack_client.api_call(
             "chat.postMessage",
             channel=channel,
