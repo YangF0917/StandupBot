@@ -31,6 +31,7 @@ FAKE_FUNCTIONS = ['umarfc']
 FAKE_SORTS = ['umar']
 NUMBER_ENDPOINTS = ['trivia', 'year', 'date', 'math']
 TEXT_FILE = lambda name: "standup_" + name + ".txt"
+ILLEGAL_CHARACTERS = ['#', '%', '&', '{', '}', '\\', '<','>','*','?','/','$','!','\'','\"',':','@','+','`','|','=']
 
 # PR Label names
 BOX_1 = None # default box
@@ -306,6 +307,12 @@ def is_valid_number(string):
             return False
     return True
 
+def is_valid_team_name(string):
+    for letter in string:
+        if letter in ILLEGAL_CHARACTERS:
+            return False
+    return True
+
 def get_name(member):
     temp = slack_client.api_call("users.info", user=member)
     return temp['user']['name'] + '\n'
@@ -320,7 +327,7 @@ def add_team(command, sender, table = BOX_TEAMS):
         team_to_add = command_string[1] 
         if team_to_add:
             if (team_to_add not in table):
-                table.append(team_to_add + '\n')
+                table.append(team_to_add)
                 save_table_to_file(table)
             else:
                 return 'Team already exists at the table'
@@ -499,7 +506,7 @@ def handle_command(command, channel, sender):
         response = command_list(command_switch, command, sender)
     
     # Sends the response back to the channel
-    if isinstance(response, str) or isinstance(response, basestring) or response is None:
+    if isinstance(response, str) or isinstance(response, str) or response is None:
         slack_client.api_call(
             "chat.postMessage",
             channel=channel,
