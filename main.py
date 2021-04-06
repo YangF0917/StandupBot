@@ -301,6 +301,12 @@ def is_valid_number(string):
             return False
     return True
 
+def is_valid_team_name(string):
+    for letter in string:
+        if letter in ILLEGAL_CHARACTERS:
+            return False
+    return True
+
 def get_name(member):
     temp = slack_client.api_call("users.info", user=member)
     return temp['user']['name'] + '\n'
