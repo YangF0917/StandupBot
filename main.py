@@ -32,97 +32,132 @@ SORTS = {}
 FAKE_FUNCTIONS = ['umarfc']
 FAKE_SORTS = ['umar']
 NUMBER_ENDPOINTS = ['trivia', 'year', 'date', 'math']
-CHANNEL_REQ = ['psconfig']
-TEXT_FILE = lambda name: "standup_" + name + ".txt"
-ILLEGAL_CHARACTERS = ['#', '%', '&', '{', '}', '\\', '<','>','*','?','/','$','!','\'','\"',':','@','+','`','|','=']
-connection = None
+CHANNEL_REQ = ['ps']
+EMPTY_TEAM = {
+        "postscrum": {
+            "channel": "",
+            "message": "Postscrum? :eyes:",
+            "time": "",
+            "message_id": ""
+        },
+        "members" : {}
+    }
 
-# SQL Queries
-CREATE_STANDUP_TABLE = lambda name: """ CREATE TABLE IF NOT EXISTS {} (
-                                        id integer PRIMARY KEY,
-                                        name text NOT NULL,
-                                        postscrum boolean NOT NULL,
-                                        slackid varchar NOT NULL
-                                    ); """.format(name)
-CREATE_TEAMS_TABLE = """ CREATE TABLE IF NOT EXISTS TEAMS (
-                                        id integer PRIMARY KEY,
-                                        name text NOT NULL,
-                                        channelid varchar NOT NULL,
-                                        postscrum_time time
-                                    ); """
+EMPTY_MEMBER = {
+        "has_postscrum": False,
+    }
 
-CREATE_UFC_TABLE = """ CREATE TABLE IF NOT EXISTS UFC (
-                                        id integer PRIMARY KEY,
-                                        name text NOT NULL,
-                                        slackid varchar NOT NULL
-                                    ); """
+# PR Label 
+with open('ufc.json') as f:
+  UMAR_FC = json.load(f)
+with open('standup.json') as f:
+  STANDUP_TEAMS = json.load(f)
 
-INSERT_ROW_STANDUP = lambda name: '''INSERT INTO {}(name,postscrum,slackid)
-              VALUES(?,?,?)'''.format(name)
 
-INSERT_ROW_TEAMS = '''INSERT INTO TEAMS(name,channelid)
-              VALUES(?,?)'''
-
-INSERT_ROW_UFC = '''INSERT INTO UFC(name,slackid)
-              VALUES(?,?)'''
-
-UPDATE_STANDUP = lambda name: ''' UPDATE {}
-                SET postscrum = ?,
-                WHERE slackid = ?'''.format(name)
-
-UPDATE_TEAMS = ''' UPDATE TEAMS
-                SET channelid = ?,
-                WHERE name = ?'''
-
-SELECT_ALL = lambda name: '''SELECT * FROM {}'''.format(name)
-def SELECT(name, pairs): 
-    q = 'SELECT * from {} WHERE'.format(name)
-    for k, v in pairs.items():
-        q += ' {}=? AND'
-    return q[:-3]
-
-DELETE_STANDUP_ROW = lambda name: '''DELETE FROM {} WHERE slackid=?'''.format(name)
-DELETE_TEAMS_ROW = '''DELETE FROM TEAMS WHERE name=?'''
-DELETE_ROW_UFC = '''DELETE FROM UFC WHERE slackid=?'''
-
-CLEAR = lambda name: '''DELETE FROM {}'''.format(name)
-
-# PR Label names
-BOX_1 = None # default box
-member_list = open("teams.txt", "r") # standup list
-BOX_TEAMS = deque(filter(None, member_list.read().split('\n')))
-member_list.close()
-member_list = open("standup.txt", "r") # standup list
-BOX_3 = deque(filter(None, member_list.read().split('\n')))
-member_list.close()
-member_list = open("backup.txt", "r") # backup list
-BOX_4 = deque(filter(None, member_list.read().split('\n')))
-member_list.close()
-
-def show_table(command, sender, table=BOX_3):
+def show_team(command, sender):
     print
-    'in show_table func'
-    if len(table) < 1:
-        return 'The table is empty!'
+    'in show_team func'
+    params = command.split(' ')
+    if len(params) < 2:
+        return "Please specify a team name."
+    name = params[1]
+    if name not in STANDUP_TEAMS:
+        return "No team exists with that name."
+    team = STANDUP_TEAMS[name]
+    print(team)
+    if len(team["members"]) == 0:
+        return '{} currently has no members :pensive:'.format(name)
     else:
-        tableString = 'The table contains:\n'
-        for member in table:
-            reviewer = slack_client.api_call("users.info", user=member)
-            tableString += (reviewer['user']['name'] + '\n')
-        return tableString
+        output = '{} consists of the following members:\n'.format(name)
+        for member in team["members"]:
+            output += "\t" + get_name(member)
+        return output
 
-def show_standup_table(command, sender):
+def show_teams(command, sender):
     print
-    'in show_standup_table func'
-    commands = command.split(' ')
-    if (len(commands) < 2):
-        return show_table(command, sender, BOX_3)
-    else:
-        try:
-            with open(TEXT_FILE(commands[1].lower()), 'r') as file:
-                return show_table(command, sender, deque(filter(None, file.read().split('\n'))))
-        except:
-            return "The standup list does not exist"
+    'in show_team func'
+    if not len(STANDUP_TEAMS):
+        return 'There are no teams here.'
+    output = 'Stored teams are as follows: \n'
+    for key in STANDUP_TEAMS:
+        output += '\t' + key + '\n'
+    return output
+    
+def remove_team(command, sender):
+    print
+    'in remove_team func'
+    params = command.split(' ')
+    if len(params) < 2:
+        return "Please specify a team name."
+    name = params[1]
+    if name not in STANDUP_TEAMS:
+        return "No team exists with that name."
+    STANDUP_TEAMS.pop(name)
+    save_json(STANDUP_TEAMS, 'StandUp.json')
+    return '{} has been removed from the teams list'.format(name)
+
+def add_team(command, sender):
+    print
+    'in add_team func'
+    params = command.split(' ')
+    if len(params) < 2:
+        return "Please specify a team name."
+    name = params[1]
+    if name in STANDUP_TEAMS:
+        return "A team with this name already exists."
+    STANDUP_TEAMS[name] = EMPTY_TEAM
+    save_json(STANDUP_TEAMS, 'StandUp.json')
+    return '{} has been added to the teams list'.format(name)
+
+def save_json(table, file):
+    with open(file, 'w') as json_file:
+        json.dump(table, json_file, indent = 4, sort_keys=True)
+
+def add_member(command, sender):
+    print
+    'in add_member func'
+    params = command.split(' ')
+    if len(params) < 3:
+        return 'Try `add <team name> @<user>` to add a user to the table'
+    team = params[1]
+    if team not in STANDUP_TEAMS:
+        return "No team exists with that name."
+    users_added = 0
+    for token in range(2, len(params)):
+        match = re.search(ADD_USER_REGEX, params[token])
+        if match:
+            if match[1] not in STANDUP_TEAMS[team]["members"]:
+                STANDUP_TEAMS[team]["members"][match[1]] = EMPTY_MEMBER
+                users_added+=1
+    if users_added == 0:
+        return "No users added"
+    save_json(STANDUP_TEAMS,'StandUp.json')
+    if users_added == 1:
+        return "A new member just dropped into ur team, say hello!"
+    return "{} new members just dropped into ur team, say hello!".format(users_added)     
+
+def remove_member(command, sender):
+    print
+    'in remove_member func'
+    params = command.split(' ')
+    if len(params) < 3:
+        return 'Try `remove <team name> @<user>` to remove a user from the table'
+    team = params[1]
+    if team not in STANDUP_TEAMS:
+        return "No team exists with that name."
+    users_removed = 0
+    for token in range(2, len(params)):
+        match = re.search(ADD_USER_REGEX, params[token])
+        if match:
+            if params[token] in STANDUP_TEAMS[team]["members"]:
+                STANDUP_TEAMS[team]["members"].pop(STANDUP_TEAMS[team]["members"].index(params[token]))
+                users_removed+=1
+    if users_removed == 0:
+        return "No users removed"
+    save_json(STANDUP_TEAMS,'StandUp.json')
+    if users_removed == 1:
+        return "A member just got dropped from the team, say bye! :wave:"
+    return "{} members just got dropped from the team, say bye! :wave:".format(users_added)        
 
 def show_umarfc(command, sender):
     print
@@ -139,45 +174,6 @@ def show_umarfc(command, sender):
             'channel': dm_channel
         }
 
-def drop_table(command, sender, table=BOX_3, name=None):
-    print
-    'in drop_table func'
-    name = name if not name else name.lower()
-    if (name):
-        try:
-            with open("standup_"+name+".txt", "r") as file:
-                table = deque(filter(None, file.read().split('\n')))
-            
-            if len(table) < 1:
-                return 'The table is already empty'
-            else:
-                table.clear()
-                save_table_to_file(table, name)
-                return 'The table has been cleared'
-        except:
-            return "The table does not exist"
-    else:
-        if len(table) < 1:
-            return 'The table is already empty'
-        else:
-            table.clear()
-            save_table_to_file(table)
-            return 'The table has been cleared'
-
-def drop_standup_table(command, sender):
-    commands = command.split(' ')
-    print
-    'in drop_standup_table func'
-    if (len(commands) < 2):
-        return drop_table(command, sender, BOX_3)
-    else:
-        return drop_table(command, sender, BOX_1, commands[1])
-
-def drop_umarfc(command, sender):
-    print
-    'in drop_umarfc func'
-    return drop_table(command, sender, BOX_4)
-
 def list_commands(command, sender):
     print
     'in list_commands func'
@@ -189,144 +185,64 @@ def list_commands(command, sender):
     commandList += "https://github.com/YangF0917/ACJBot"
     return commandList
 
-def add_to_table(command, sender, group=None, table=BOX_3):
-    print
-    'in add_to_BOX_1 func'
-    message = [n for n in filter(lambda k: k!=group, command.split(' '))] if group else command.split(' ')
-    group = group if group is None else group.lower()
-    valid_team = group in BOX_TEAMS if group else True
-    users_added = 0
-    if len(message) > 1:
-        for token in range(1, len(message)):
-            match = re.search(ADD_USER_REGEX, message[token])
-            if match:
-                if group and valid_team:
-                    file = open(TEXT_FILE(group).encode('utf8'), "a")
-                    file.close()
-                    mem_list = open(TEXT_FILE(group).encode('utf8'), "r")
-                    BOX = deque(filter(None, mem_list.read().split('\n')))
-                    mem_list.close()
-                    if (match.group(1) not in BOX):
-                        BOX.append(match.group(1))
-                        save_table_to_file(BOX, group)
-                        users_added += 1
-                elif match.group(1) not in table:
-                    table.append(match.group(1))
-                    save_table_to_file(table)
-                    users_added += 1
-                else:
-                    print
-                    'User already exists at the table'
-            else:
-                return 'Users to add must be in the form of "@USER"'
-        word = 'user' if users_added == 1 else 'users'
-        return '{} {} added to the table!'.format(users_added, word) if valid_team else 'Team does not exist, please call `@acj addteam <teamname>` to create the team'
-    return 'No user to add'
-
-def add_to_standup_table(command, sender):
-    print
-    'in add_to_standup_table func'
-    params = command.split(' ')
-    if (len(params) <= 2 or re.search(ADD_USER_REGEX, params[1])):
-        return add_to_table(command, sender, None, BOX_3)
-    else:
-        return add_to_table(command, sender, params[1])
-
-def add_to_umarfanclub(command, sender, table = BOX_4):
-    print
-    'in add_to_umarfanclub func'
-    if sender not in table:
-        table.append(sender)
-        save_table_to_file(table)
-    else:
-        print
-        'User already exists at the table'
-
-def remove_from_table(command, sender, table=BOX_3):
-    print
-    'in remove_from_table func'
-    message = command.split(' ')
-    if len(message) > 1:
-        match = re.search(ADD_USER_REGEX, message[1])
-        if match:
-            if table.count(match.group(1)) < 1:
-                return 'No user found to remove'
-            else:
-                # top_of_list = table[0]
-                table.remove(match.group(1))
-                save_table_to_file(table)
-                return '<@{}> removed from the table!'.format(match.group(1))
-    return '"remove @<user>" to remove a member of the table.'
-
-def remove_from_standup_table(command, sender):
-    print
-    'in remove_from_standup_table func'
-    return remove_from_table(command, sender, BOX_3)
-
-def remove_from_umarfc(command, sender, table=BOX_4):
-    print
-    'in remove_from_umarfc func'
-    if sender in table:
-        table.remove(sender)
-        save_table_to_file(table)
-    else:
-        print
-        'User is not currently in the fanclub'
-
 def sort_help():
     print
     "in sort_help"
-    sortList = "Here is the list of sorts:\n"
+    sortList = "Try `sort <team name> <sort type>` \nHere is the list of sorts:\n"
     for key in SORTS.keys():
         if (key not in FAKE_SORTS):
             sortList += (key + '\n')
     sortList += "You can probably figure out what each one is ;)\nOr you could just read the documentation on https://github.com/YangF0917/ACJBot"
     return sortList
 
-def choose_standup_order(command, sender, table=BOX_3):
+def choose_standup_order(command, sender):
     print
     "in choose_standup_order"
 
     command_string = command.split(' ')
-    if len(command_string) == 1 or command_string[1] not in SORTS:
+    if len(command_string) <3 or command_string[2] not in SORTS:
         return sort_help()
-
-    if len(table) < 1:
+    team = command_string[1]
+    sort = command_string[2]
+    if team not in STANDUP_TEAMS:
+        return "Can't sort a team that doesn't exist!"
+    team = STANDUP_TEAMS[team]["members"]
+    if len(team) < 1:
         return 'The table is empty!'
     else:
-        tableString = 'This week\'s standup order:\n'
-        temp = SORTS[command_string[1]](command, sender)
-        if (len(command_string) > 2 and command_string[2] == "pickme"):
+        tableString = 'Today\'s standup order:\n'
+        temp = SORTS[sort](command, sender, team)
+        if (len(command_string) > 3 and command_string[3] == "pickme"):
             sender_name = get_name(sender)
             temp.insert(0, temp.pop(temp.index(sender_name))) if sender_name in temp else temp
-        elif (len(command_string) > 2 and command_string[2] == "last"):
+        elif (len(command_string) > 3 and command_string[3] == "last"):
             sender_name = get_name(sender)
             temp.append(temp.pop(temp.index(sender_name))) if sender_name in temp else temp
-        elif (len(command_string) > 2 and command_string[1] != 'umar'):
+        elif (len(command_string) > 3 and command_string[2] != 'umar'):
             match = re.search(MENTION_REGEX, command_string[2])
             volunteer = [get_name(match.group(1))]
             temp.insert(0, temp.pop(temp.index(volunteer[0]))) if len(volunteer) else temp
         
         for member in temp:
-            tableString += member
+            tableString += '\t' + member
         return {
             'text': tableString,
-            'channel': slack_client.api_call("conversations.open", users=sender)['channel']['id'] if command_string[1] == 'umar' else None
+            'channel': slack_client.api_call("conversations.open", users=sender)['channel']['id'] if command_string[2] == 'umar' else None
         }
 
-def alpha_order(command, sender, table=BOX_3):
+def alpha_order(command, sender, table):
     return sorted(map(get_name, table))
 
-def reverse_alpha_order(command, sender, table=BOX_3):
+def reverse_alpha_order(command, sender, table):
     return sorted(map(get_name, table), reverse=True)
 
-def name_length_order(command, sender, table=BOX_3):
+def name_length_order(command, sender, table):
     return sorted(map(get_name, table), key = len)
 
-def rev_name_length_order(command, sender, table=BOX_3):
+def rev_name_length_order(command, sender, table):
     return sorted(map(get_name, table), key = len, reverse = True)
 
-def randomize_standup(command, sender, table=BOX_3):
+def randomize_standup(command, sender, table):
     users = [mem for mem in table]
     random.shuffle(users)
     return map(get_name, users)
@@ -341,17 +257,41 @@ def number(command, sender):
     number_obj = requests.get('http://numbersapi.com/random/' + random_endpoint + '?json')
     return number_obj.json()['text']
 
-def umar(command, sender, random = False, table = BOX_3):
+def umar(command, sender, table):
     slack_client.api_call("conversations.open", users=sender)['channel']['id']
     command_string = command.split(' ')
-    num_umars = 10 if (len(command_string) < 3 or not is_valid_number(command_string[2])) else int(command_string[2])
+    num_umars = 10 if (len(command_string) < 4 or not is_valid_number(command_string[3])) else int(command_string[3])
     if (num_umars > 15):
-        add_to_umarfanclub(command, sender)
+        add_to_umarfanclub(sender)
         return ["Welcome to the Umar fanclub :eyes:"]
     elif (num_umars < 1):
-        remove_from_umarfc(command, sender)
+        remove_from_umarfanclub(sender)
         return ["You've been removed from the club"]
-    return [name for name in filter(lambda name: "umar" in name.lower(), map(get_name, table))] * num_umars
+    return [name for name in filter(lambda name: "umar" in name.lower(), map(get_name,table))] * num_umars
+
+def add_to_umarfanclub(sender):
+    print
+    'in add_to_umarfanclub func'
+    if sender not in UMAR_FC["members"]:
+        UMAR_FC["members"].append(sender)
+    save_json(UMAR_FC,'ufc.json')
+    
+def remove_from_umarfanclub(sender):
+    print
+    'in remove_from_umarfanclub func'
+    if sender in UMAR_FC["members"]:
+        UMAR_FC["members"].pop(UMAR_FC["members"].index(sender))
+    save_json(UMAR_FC,'ufc.json')
+
+def show_umarfc(command, sender):
+    print
+    if len(team["members"]) == 0:
+        return '{} currently has no members :pensive:'.format(name)
+    else:
+        output = '{} consists of the following members:\n'.format(name)
+        for member in team["members"]:
+            output += "\t" + get_name(member)
+        return output
 
 def is_valid_number(string):
     if string[0] == "-":
@@ -371,100 +311,70 @@ def get_name(member):
     temp = slack_client.api_call("users.info", user=member)
     return temp['user']['name'] + '\n'
 
-def add_team(command, sender, table = BOX_TEAMS):
-    print
-    'in add_team function'
-    command_string = command.split(' ')
-    if len(command_string) < 2:
-        return 'No team to add'
-    else: 
-        team_to_add = command_string[1] 
-        if team_to_add:
-            if (team_to_add not in table):
-                table.append(team_to_add)
-                save_table_to_file(table)
-            else:
-                return 'Team already exists at the table'
-        return 'Added {} to the Teams table!'.format(team_to_add)
+def ps_usage():
+    output = 'To configure postscrum for your team, use "@acj ps [team]" along with one of the following:\n'
+    output += '\t"time [24hr-time]": Sets the time for the postscrum message to appear in this channel.\n'
+    output += '\t"message [message]": Sets the postscrum message. By default, the message is "Postscrum? :eyes:".\n'
+    output += '\t"stop": Stops postscrum messages from appearing in this channel.\n'
+    output += 'Note: Each team can receive postscrum messages in only one channel, and the messages will not appear if a time is not set.'
+    return output
 
-def show_teams(command, seeker, table = BOX_TEAMS):      
-    print
-    'in show_teams func'
-    if len(table) < 1:
-        return 'The table is empty!'
-    else:
-        tableString = 'The table contains:\n'
-        for member in table:
-            tableString += member + '\n'
-        return tableString
-
-def remove_team(command, sender, table=BOX_TEAMS):
-    print
-    'in remove_team func'
-    message = command.split(' ')
-    if len(message) > 1:
-        team = message[1]
-        if team:
-            if table.count(team) < 1:
-                return 'No team found to remove'
-            else:
-                # top_of_list = table[0]
-                table.remove(team)
-                save_table_to_file(table)
-                return '<@{}> had <{}> removed from the table!'.format(sender, team)
-    return 'Try "remove <team name>" to remove a team from the table.'
-
-def remove_ps(channel, table, index):
-    table.remove(table[index])
-
-# usage: @acj psconfig [time/"stop"]
-def configure_postscrum(command, channel, sender):
+# usage: @acj ps team ["time"/"stop"/"message"] [message/time]
+def configure_postscrum (command, sender, channel):
     print
     'in configure_postscrum func'
-    message = command.split(' ')
-    if len(message) > 1:
-        match = re.search(TIME_REGEX, message[1])
-        if match or message[1] == 'stop':
-            ps_list = open('standup_postscrum.txt', "r") # standup list
-            BOX_PS = deque(filter(None, ps_list.read().split('\n')))
-            ps_list.close()
-            channels_list = list(map(lambda item: item.split(' ')[0], BOX_PS))
+    params = command.split(' ')
+    # check for team
+    # check for time
+    # check for message
+    if len(params) > 2:
+        team = params[1]
+        if team not in STANDUP_TEAMS:
+            return "That team doesn't exist."
+        if params[2] == "time" and len(params) > 3:
+            match = re.search(TIME_REGEX, params[3])
             if match:
-                time_str = ("0" if len(message[1]) == 4 else "") + message[1]
-                entry = "{} {}".format(channel, time_str)
-                if channel in channels_list:
-                    remove_ps(channel, BOX_PS, channels_list.index(channel))
-                BOX_PS.append(entry)            
-                save_table_to_file(BOX_PS, 'postscrum')
+                STANDUP_TEAMS[team]["postscrum"]["channel"] = channel
+                STANDUP_TEAMS[team]["postscrum"]["time"] = ("0" if len(params[1]) == 4 else "") + params[3]
+                save_json(STANDUP_TEAMS)
                 configure_scheduler()
-                return 'Postscrum messages will appear in this channel at {} every weekday.'.format(time_str)
-            else:
-                if channel in channels_list:
-                    remove_ps(channel, BOX_PS, channels_list.index(channel))
-                    save_table_to_file(BOX_PS, 'postscrum')
-                    configure_scheduler()
-                    return 'Postscrum messages will stop appearing in this channel.'
-                return 'Postscrum messages are not currently set in this channel.'
-    return 'To set postscrum messages to occur every weekday at <24hrtime> in this channel, use "psconfig <24hrtime>". To stop messages, use "psconfig stop".'
+                return "Postscrum messages will appear in this channel at {} every weekday.".format(STANDUP_TEAMS[team]["postscrum"]["time"])
+            return "Please enter a valid time."
+        elif params[2] == "message" and len(params) > 3:
+            STANDUP_TEAMS[team]["postscrum"]["channel"] = channel
+            STANDUP_TEAMS[team]["postscrum"]["message"] = " ".join(params[3:])
+            save_json(STANDUP_TEAMS)
+            configure_scheduler()
+            return 'Postscrum message has been set to "{}".'.format(STANDUP_TEAMS[team]["postscrum"]["message"])
+        elif params[2] == "stop":
+            if STANDUP_TEAMS[team]["postscrum"]["channel"] == "":
+                return "Postscrum messages are not currently set in this channel."
+            STANDUP_TEAMS[team]["postscrum"]["channel"] = ""
+            STANDUP_TEAMS[team]["postscrum"]["time"] = ""
+            save_json(STANDUP_TEAMS)
+            configure_scheduler()
+            return 'Postscrum messages have been stopped in this channel. To reconfigure, use the "time" postscrum option.'
+    return ps_usage()
 
 
 # === ALL POSSIBLE BOT COMMANDS END ===
 
 # === BOT COMMAND MAPPING ===
 
-CHOICES['showtable'] = show_standup_table
-CHOICES['droptable'] = drop_standup_table
+CHOICES['show'] = show_team
+CHOICES['showteams'] = show_teams
+CHOICES['removeteam'] = remove_team
 CHOICES['help'] = list_commands
-CHOICES['add'] = add_to_standup_table
-CHOICES['remove'] = remove_from_standup_table
+CHOICES['add'] = add_member
+CHOICES['remove'] = remove_member
 CHOICES['sort'] = choose_standup_order
 CHOICES['umarfc'] = show_umarfc
 CHOICES['advice'] = advice
 CHOICES['number'] = number
 CHOICES['addteam'] = add_team
-CHOICES['showteams'] = show_teams
-CHOICES['removeteam'] = remove_team
-CHOICES['psconfig'] = configure_postscrum
+
+CHOICES['ps'] = configure_postscrum
+
 # sorts
 SORTS['alpha'] = alpha_order
 SORTS['ralpha'] = reverse_alpha_order
@@ -475,82 +385,32 @@ SORTS['umar'] = umar
 
 # === BOT COMMAND MAPPING END ===
 
-def create_connection(db_file):
-    """ create a database connection to a SQLite database """
-    conn = None
-    try:
-        conn = sqlite3.connect(db_file)
-        print("Currently running sqlite v." + sqlite3.version)
-        query_blank(conn, CREATE_TEAM_TABLE)
-        query_blank(conn, CREATE_UFC_TABLE)
-        return conn
-    except Error as e:
-        print(e)
-    finally:
-        if conn: conn.close()
 
-def query_blank(conn, query):
-    try:
-        c = conn.cursor()
-        c.execute(query)
-    except Error as e:
-        print(e)
-
-def query_data(conn, query, data):
-    try:
-        c =  conn.cursor()
-        c.execute(query, data)
-        conn.commit()
-        print("SUCCESS: row added to the table")
-    except Error as e:
-        print(e)
-
-def daily_postscrum(channel):
+def daily_postscrum(channel, message):
     slack_client.api_call(
         "chat.postMessage",
         channel=channel,
-        text="Postscrum? :eyes:"
+        text=message
     )
 
 def configure_scheduler():
-    ps_list = open("standup_postscrum.txt", "r")
-    BOX_PS = deque(filter(None, ps_list.read().split('\n')))
-    ps_list.close()
+    ps_objects = list(filter(lambda ps: ps["channel"] != "" and ps["time"] != "", list(map(lambda team: team["postscrum"], STANDUP_TEAMS.values()))))
     schedule.clear()
-    for pair in BOX_PS:
-        p = pair.split(' ')
-        channel = p[0]
-        time = p[1]
-        schedule.every().monday.at(time).do(daily_postscrum, channel=channel)
-        schedule.every().tuesday.at(time).do(daily_postscrum, channel=channel)
-        schedule.every().wednesday.at(time).do(daily_postscrum, channel=channel)
-        schedule.every().thursday.at(time).do(daily_postscrum, channel=channel)
-        schedule.every().friday.at(time).do(daily_postscrum, channel=channel)
+    for obj in ps_objects:
+        schedule.every().monday.at(obj["time"]).do(daily_postscrum, channel=obj["channel"], message=obj["message"])
+        schedule.every().tuesday.at(obj["time"]).do(daily_postscrum, channel=obj["channel"], message=obj["message"])
+        schedule.every().wednesday.at(obj["time"]).do(daily_postscrum, channel=obj["channel"], message=obj["message"])
+        schedule.every().thursday.at(obj["time"]).do(daily_postscrum, channel=obj["channel"], message=obj["message"])
+        schedule.every().friday.at(obj["time"]).do(daily_postscrum, channel=obj["channel"], message=obj["message"])
 
 def command_list(index, command, sender, channel):
     result = CHOICES.get(index, None)
     if result != None and index in CHANNEL_REQ:
-        result = result(command, channel, sender)
+        result = result(command, sender, channel)
     else:
         result = result(command, sender)
     return result
 
-def save_table_to_file(table=BOX_3, name=None):
-    if (name):
-        member_list = open(TEXT_FILE(name), "w")
-    elif(table == BOX_3):
-        member_list = open("standup.txt", "w")
-    elif(table == BOX_4):
-        member_list = open("backup.txt", "w")
-    elif(table == BOX_TEAMS):
-        member_list = open("teams.txt", "w")
-    else:
-        print("something went wrong!")
-    file_buffer = ''
-    for member in table:
-        file_buffer += member + '\n'
-    member_list.write(file_buffer)
-    member_list.close()
 
 def parse_bot_commands(slack_events):
     """
@@ -616,9 +476,6 @@ if __name__ == "__main__":
         # Read bot's user ID by calling web API method `auth.test`
         codereviewbot_id = slack_client.api_call("auth.test")["user_id"]
         configure_scheduler()
-        print('Connecting to DB')
-        connection = create_connection(r".\\pythonsqlite.db")
-        print('DB Connected')
         while True:
             schedule.run_pending()
             command, channel, sender = parse_bot_commands(slack_client.rtm_read())
