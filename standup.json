@@ -1,0 +1,36 @@
+{
+    "ev": {
+        "members": {},
+        "postscrum": {
+            "channel": "C01TS7C8JAV",
+            "message": "this is a message",
+            "message_id": "",
+            "time": ""
+        }
+    },
+    "umar": {
+        "members": {
+            "U01RVSYDJN4": {
+                "has_postscrum": false
+            },
+            "U01S9CL9HRD": {
+                "has_postscrum": false
+            },
+            "U01SF8JFCBG": {
+                "has_postscrum": false
+            },
+            "U01SM1QDXM3": {
+                "has_postscrum": false
+            },
+            "U01SU6UP2BW": {
+                "has_postscrum": false
+            }
+        },
+        "postscrum": {
+            "channel": "",
+            "message": "Postscrum? :eyes:",
+            "message_id": "",
+            "time": ""
+        }
+    }
+}
