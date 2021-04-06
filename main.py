@@ -8,6 +8,8 @@ import json
 import random
 import requests
 import schedule
+import sqlite3
+from sqlite3 import *
 
 # load environment variables
 from os.path import join, dirname
@@ -30,8 +32,60 @@ SORTS = {}
 FAKE_FUNCTIONS = ['umarfc']
 FAKE_SORTS = ['umar']
 NUMBER_ENDPOINTS = ['trivia', 'year', 'date', 'math']
+CHANNEL_REQ = ['psconfig']
 TEXT_FILE = lambda name: "standup_" + name + ".txt"
 ILLEGAL_CHARACTERS = ['#', '%', '&', '{', '}', '\\', '<','>','*','?','/','$','!','\'','\"',':','@','+','`','|','=']
+connection = None
+
+# SQL Queries
+CREATE_STANDUP_TABLE = lambda name: """ CREATE TABLE IF NOT EXISTS {} (
+                                        id integer PRIMARY KEY,
+                                        name text NOT NULL,
+                                        postscrum boolean NOT NULL,
+                                        slackid varchar NOT NULL
+                                    ); """.format(name)
+CREATE_TEAMS_TABLE = """ CREATE TABLE IF NOT EXISTS TEAMS (
+                                        id integer PRIMARY KEY,
+                                        name text NOT NULL,
+                                        channelid varchar NOT NULL,
+                                        postscrum_time time
+                                    ); """
+
+CREATE_UFC_TABLE = """ CREATE TABLE IF NOT EXISTS UFC (
+                                        id integer PRIMARY KEY,
+                                        name text NOT NULL,
+                                        slackid varchar NOT NULL
+                                    ); """
+
+INSERT_ROW_STANDUP = lambda name: '''INSERT INTO {}(name,postscrum,slackid)
+              VALUES(?,?,?)'''.format(name)
+
+INSERT_ROW_TEAMS = '''INSERT INTO TEAMS(name,channelid)
+              VALUES(?,?)'''
+
+INSERT_ROW_UFC = '''INSERT INTO UFC(name,slackid)
+              VALUES(?,?)'''
+
+UPDATE_STANDUP = lambda name: ''' UPDATE {}
+                SET postscrum = ?,
+                WHERE slackid = ?'''.format(name)
+
+UPDATE_TEAMS = ''' UPDATE TEAMS
+                SET channelid = ?,
+                WHERE name = ?'''
+
+SELECT_ALL = lambda name: '''SELECT * FROM {}'''.format(name)
+def SELECT(name, pairs): 
+    q = 'SELECT * from {} WHERE'.format(name)
+    for k, v in pairs.items():
+        q += ' {}=? AND'
+    return q[:-3]
+
+DELETE_STANDUP_ROW = lambda name: '''DELETE FROM {} WHERE slackid=?'''.format(name)
+DELETE_TEAMS_ROW = '''DELETE FROM TEAMS WHERE name=?'''
+DELETE_ROW_UFC = '''DELETE FROM UFC WHERE slackid=?'''
+
+CLEAR = lambda name: '''DELETE FROM {}'''.format(name)
 
 # PR Label names
 BOX_1 = None # default box
@@ -410,6 +464,7 @@ CHOICES['number'] = number
 CHOICES['addteam'] = add_team
 CHOICES['showteams'] = show_teams
 CHOICES['removeteam'] = remove_team
+CHOICES['psconfig'] = configure_postscrum
 # sorts
 SORTS['alpha'] = alpha_order
 SORTS['ralpha'] = reverse_alpha_order
@@ -419,6 +474,36 @@ SORTS['random'] = randomize_standup
 SORTS['umar'] = umar
 
 # === BOT COMMAND MAPPING END ===
+
+def create_connection(db_file):
+    """ create a database connection to a SQLite database """
+    conn = None
+    try:
+        conn = sqlite3.connect(db_file)
+        print("Currently running sqlite v." + sqlite3.version)
+        query_blank(conn, CREATE_TEAM_TABLE)
+        query_blank(conn, CREATE_UFC_TABLE)
+        return conn
+    except Error as e:
+        print(e)
+    finally:
+        if conn: conn.close()
+
+def query_blank(conn, query):
+    try:
+        c = conn.cursor()
+        c.execute(query)
+    except Error as e:
+        print(e)
+
+def query_data(conn, query, data):
+    try:
+        c =  conn.cursor()
+        c.execute(query, data)
+        conn.commit()
+        print("SUCCESS: row added to the table")
+    except Error as e:
+        print(e)
 
 def daily_postscrum(channel):
     slack_client.api_call(
@@ -442,9 +527,11 @@ def configure_scheduler():
         schedule.every().thursday.at(time).do(daily_postscrum, channel=channel)
         schedule.every().friday.at(time).do(daily_postscrum, channel=channel)
 
-def command_list(index, command, sender):
+def command_list(index, command, sender, channel):
     result = CHOICES.get(index, None)
-    if result != None:
+    if result != None and index in CHANNEL_REQ:
+        result = result(command, channel, sender)
+    else:
         result = result(command, sender)
     return result
 
@@ -500,10 +587,7 @@ def handle_command(command, channel, sender):
     # This is where you start to implement more commands!
     command_switch = command.split(' ')[0]
 
-    if (command_switch == "psconfig"):
-        response = configure_postscrum(command, channel, sender)
-    else:
-        response = command_list(command_switch, command, sender)
+    response = command_list(command_switch, command, sender, channel)
     
     # Sends the response back to the channel
     if isinstance(response, str) or isinstance(response, str) or response is None:
@@ -532,6 +616,9 @@ if __name__ == "__main__":
         # Read bot's user ID by calling web API method `auth.test`
         codereviewbot_id = slack_client.api_call("auth.test")["user_id"]
         configure_scheduler()
+        print('Connecting to DB')
+        connection = create_connection(r".\\pythonsqlite.db")
+        print('DB Connected')
         while True:
             schedule.run_pending()
             command, channel, sender = parse_bot_commands(slack_client.rtm_read())
