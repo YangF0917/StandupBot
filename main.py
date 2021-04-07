@@ -38,7 +38,7 @@ EMPTY_TEAM = {
             "channel": "",
             "message": "Postscrum? :eyes:",
             "time": "",
-            "message_id": ""
+            "timestamp": "",
         },
         "members" : {}
     }
@@ -64,13 +64,13 @@ def show_team(command, sender):
     if name not in STANDUP_TEAMS:
         return "No team exists with that name."
     team = STANDUP_TEAMS[name]
-    print(team)
     if len(team["members"]) == 0:
         return '{} currently has no members :pensive:'.format(name)
     else:
+        update_reactions(name)
         output = '{} consists of the following members:\n'.format(name)
         for member in team["members"]:
-            output += "\t" + get_name(member)
+            output += "\t" + get_name(member) + (" :hand:" if team["members"][member]["has_postscrum"] else "") + "\n"
         return output
 
 def show_teams(command, sender):
@@ -93,7 +93,7 @@ def remove_team(command, sender):
     if name not in STANDUP_TEAMS:
         return "No team exists with that name."
     STANDUP_TEAMS.pop(name)
-    save_json(STANDUP_TEAMS, 'StandUp.json')
+    save_json(STANDUP_TEAMS)
     return '{} has been removed from the teams list'.format(name)
 
 def add_team(command, sender):
@@ -106,10 +106,10 @@ def add_team(command, sender):
     if name in STANDUP_TEAMS:
         return "A team with this name already exists."
     STANDUP_TEAMS[name] = EMPTY_TEAM
-    save_json(STANDUP_TEAMS, 'StandUp.json')
+    save_json(STANDUP_TEAMS)
     return '{} has been added to the teams list'.format(name)
 
-def save_json(table, file):
+def save_json(table, file='standup.json'):
     with open(file, 'w') as json_file:
         json.dump(table, json_file, indent = 4, sort_keys=True)
 
@@ -131,7 +131,7 @@ def add_member(command, sender):
                 users_added+=1
     if users_added == 0:
         return "No users added"
-    save_json(STANDUP_TEAMS,'StandUp.json')
+    save_json(STANDUP_TEAMS)
     if users_added == 1:
         return "A new member just dropped into ur team, say hello!"
     return "{} new members just dropped into ur team, say hello!".format(users_added)     
@@ -154,7 +154,7 @@ def remove_member(command, sender):
                 users_removed+=1
     if users_removed == 0:
         return "No users removed"
-    save_json(STANDUP_TEAMS,'StandUp.json')
+    save_json(STANDUP_TEAMS)
     if users_removed == 1:
         return "A member just got dropped from the team, say bye! :wave:"
     return "{} members just got dropped from the team, say bye! :wave:".format(users_added)        
@@ -224,7 +224,7 @@ def choose_standup_order(command, sender):
             temp.insert(0, temp.pop(temp.index(volunteer[0]))) if len(volunteer) else temp
         
         for member in temp:
-            tableString += '\t' + member
+            tableString += '\t' + member + '\n' #TODO: add postscrum raised hand
         return {
             'text': tableString,
             'channel': slack_client.api_call("conversations.open", users=sender)['channel']['id'] if command_string[2] == 'umar' else None
@@ -274,7 +274,7 @@ def add_to_umarfanclub(sender):
     'in add_to_umarfanclub func'
     if sender not in UMAR_FC["members"]:
         UMAR_FC["members"].append(sender)
-    save_json(UMAR_FC,'ufc.json')
+    save_json(UMAR_FC, 'ufc.json')
     
 def remove_from_umarfanclub(sender):
     print
@@ -290,7 +290,7 @@ def show_umarfc(command, sender):
     else:
         output = '{} consists of the following members:\n'.format(name)
         for member in team["members"]:
-            output += "\t" + get_name(member)
+            output += "\t" + get_name(member) + '\n'
         return output
 
 def is_valid_number(string):
@@ -309,7 +309,7 @@ def is_valid_team_name(string):
 
 def get_name(member):
     temp = slack_client.api_call("users.info", user=member)
-    return temp['user']['name'] + '\n'
+    return temp['user']['name']
 
 def ps_usage():
     output = 'To configure postscrum for your team, use "@acj ps [team]" along with one of the following:\n'
@@ -324,9 +324,6 @@ def configure_postscrum (command, sender, channel):
     print
     'in configure_postscrum func'
     params = command.split(' ')
-    # check for team
-    # check for time
-    # check for message
     if len(params) > 2:
         team = params[1]
         if team not in STANDUP_TEAMS:
@@ -385,27 +382,55 @@ SORTS['umar'] = umar
 
 # === BOT COMMAND MAPPING END ===
 
+def update_reactions(team):
+    reset_reactions(team)
+    message_obj = slack_client.api_call(
+        "reactions.get",
+        channel=STANDUP_TEAMS[team]["postscrum"]["channel"],
+        timestamp=STANDUP_TEAMS[team]["postscrum"]["timestamp"],
+        full=False,
+    )["message"]
+    if "reactions" in message_obj:
+        users_reacted = []
+        for reaction in message_obj["reactions"]:
+            users_reacted += reaction["users"]
+        users_reacted = list(set(users_reacted)) # remove duplicates - not super necessary but probably cleaner
+        users_reacted = list(filter(lambda user: user in STANDUP_TEAMS[team]["members"], users_reacted)) # remove people who are not in the team
+        for user in users_reacted:
+            STANDUP_TEAMS[team]["members"][user]["has_postscrum"] = True
+        save_json(STANDUP_TEAMS)
 
-def daily_postscrum(channel, message):
-    slack_client.api_call(
+def reset_reactions(team):
+    for user in STANDUP_TEAMS[team]["members"]:
+        STANDUP_TEAMS[team]["members"][user]["has_postscrum"] = False
+    save_json(STANDUP_TEAMS)
+
+def daily_postscrum(team):
+    reset_reactions(team)
+    STANDUP_TEAMS[team]["postscrum"]["timestamp"] = slack_client.api_call(
         "chat.postMessage",
-        channel=channel,
-        text=message
-    )
+        channel=STANDUP_TEAMS[team]["postscrum"]["channel"],
+        text=STANDUP_TEAMS[team]["postscrum"]["message"]
+    )["message"]["ts"]
+    save_json(STANDUP_TEAMS)
 
 def configure_scheduler():
-    ps_objects = list(filter(lambda ps: ps["channel"] != "" and ps["time"] != "", list(map(lambda team: team["postscrum"], STANDUP_TEAMS.values()))))
+    teams = list(filter(lambda team: STANDUP_TEAMS[team]["postscrum"]["channel"] != "" and STANDUP_TEAMS[team]["postscrum"]["time"] != "", STANDUP_TEAMS.keys()))
     schedule.clear()
-    for obj in ps_objects:
-        schedule.every().monday.at(obj["time"]).do(daily_postscrum, channel=obj["channel"], message=obj["message"])
-        schedule.every().tuesday.at(obj["time"]).do(daily_postscrum, channel=obj["channel"], message=obj["message"])
-        schedule.every().wednesday.at(obj["time"]).do(daily_postscrum, channel=obj["channel"], message=obj["message"])
-        schedule.every().thursday.at(obj["time"]).do(daily_postscrum, channel=obj["channel"], message=obj["message"])
-        schedule.every().friday.at(obj["time"]).do(daily_postscrum, channel=obj["channel"], message=obj["message"])
+    for team in teams:
+        time = STANDUP_TEAMS[team]["postscrum"]["time"]
+        schedule.every().monday.at(time).do(daily_postscrum, team)
+        schedule.every().tuesday.at(time).do(daily_postscrum, team)
+        schedule.every().wednesday.at(time).do(daily_postscrum, team)
+        schedule.every().thursday.at(time).do(daily_postscrum, team)
+        schedule.every().friday.at(time).do(daily_postscrum, team)
 
 def command_list(index, command, sender, channel):
     result = CHOICES.get(index, None)
-    if result != None and index in CHANNEL_REQ:
+    if result == None:
+        return None
+
+    if index in CHANNEL_REQ:
         result = result(command, sender, channel)
     else:
         result = result(command, sender)
