@@ -8,8 +8,6 @@ import json
 import random
 import requests
 import schedule
-import sqlite3
-from sqlite3 import *
 
 # load environment variables
 from os.path import join, dirname
@@ -29,7 +27,7 @@ ADD_USER_REGEX = "<@(|[WU].+?)>"
 TIME_REGEX = "^([01]?[0-9]|2[0-3]):[0-5][0-9]$"
 CHOICES = {}
 SORTS = {}
-FAKE_FUNCTIONS = ['umarfc']
+FAKE_FUNCTIONS = ['umarfc'] #TODO: delete these messages if they are typed in a team channel
 FAKE_SORTS = ['umar']
 NUMBER_ENDPOINTS = ['trivia', 'year', 'date', 'math']
 CHANNEL_REQ = ['ps']
@@ -47,7 +45,6 @@ EMPTY_MEMBER = {
         "has_postscrum": False,
     }
 
-# PR Label 
 with open('ufc.json') as f:
   UMAR_FC = json.load(f)
 with open('standup.json') as f:
@@ -60,7 +57,7 @@ def show_team(command, sender):
     params = command.split(' ')
     if len(params) < 2:
         return "Please specify a team name."
-    name = params[1]
+    name = params[1].lower()
     if name not in STANDUP_TEAMS:
         return "No team exists with that name."
     team = STANDUP_TEAMS[name]
@@ -89,12 +86,12 @@ def remove_team(command, sender):
     params = command.split(' ')
     if len(params) < 2:
         return "Please specify a team name."
-    name = params[1]
+    name = params[1].lower()
     if name not in STANDUP_TEAMS:
         return "No team exists with that name."
     STANDUP_TEAMS.pop(name)
     save_json(STANDUP_TEAMS)
-    return '{} has been removed from the teams list'.format(name)
+    return '{} has removed {} from the list of teams.'.format("<@"+sender+">", name)
 
 def add_team(command, sender):
     print
@@ -102,12 +99,12 @@ def add_team(command, sender):
     params = command.split(' ')
     if len(params) < 2:
         return "Please specify a team name."
-    name = params[1]
+    name = params[1].lower()
     if name in STANDUP_TEAMS:
         return "A team with this name already exists."
     STANDUP_TEAMS[name] = EMPTY_TEAM
     save_json(STANDUP_TEAMS)
-    return '{} has been added to the teams list'.format(name)
+    return '{} has been added to the teams list.'.format(name)
 
 def save_json(table, file='standup.json'):
     with open(file, 'w') as json_file:
@@ -118,8 +115,8 @@ def add_member(command, sender):
     'in add_member func'
     params = command.split(' ')
     if len(params) < 3:
-        return 'Try `add <team name> @<user>` to add a user to the table'
-    team = params[1]
+        return 'Try `add <team> @<user>` to add a user to the table.'
+    team = params[1].lower()
     if team not in STANDUP_TEAMS:
         return "No team exists with that name."
     users_added = 0
@@ -130,34 +127,35 @@ def add_member(command, sender):
                 STANDUP_TEAMS[team]["members"][match[1]] = EMPTY_MEMBER
                 users_added+=1
     if users_added == 0:
-        return "No users added"
+        return "No users added - either they don't exist or they're already in the team."
     save_json(STANDUP_TEAMS)
     if users_added == 1:
-        return "A new member just dropped into ur team, say hello!"
-    return "{} new members just dropped into ur team, say hello!".format(users_added)     
+        return "A new member just dropped into {} - say hi! :wave:".format(team)
+    return "{} new members just dropped into {} - say hi! :wave:".format(users_added, team)     
 
 def remove_member(command, sender):
     print
     'in remove_member func'
     params = command.split(' ')
-    if len(params) < 3:
-        return 'Try `remove <team name> @<user>` to remove a user from the table'
-    team = params[1]
+    if len (params) < 3:
+        return 'Try `remove <team> @<user>` to remove a user from the table.'
+    team = params[1].lower()
     if team not in STANDUP_TEAMS:
         return "No team exists with that name."
     users_removed = 0
     for token in range(2, len(params)):
         match = re.search(ADD_USER_REGEX, params[token])
+        user_id = params[token][2:-1]
         if match:
-            if params[token] in STANDUP_TEAMS[team]["members"]:
-                STANDUP_TEAMS[team]["members"].pop(STANDUP_TEAMS[team]["members"].index(params[token]))
-                users_removed+=1
+            if user_id in STANDUP_TEAMS[team]["members"]:
+                STANDUP_TEAMS[team]["members"].pop(user_id)
+                users_removed += 1
     if users_removed == 0:
-        return "No users removed"
+        return "No users were removed - either they don't exist, or they weren't in this team."
     save_json(STANDUP_TEAMS)
     if users_removed == 1:
-        return "A member just got dropped from the team, say bye! :wave:"
-    return "{} members just got dropped from the team, say bye! :wave:".format(users_added)        
+        return "{} just removed someone from the team - say bye! :wave:".format("<@"+sender+">")
+    return "{} just removed {} members from the team - say bye! :wave:".format("<@"+sender+">", users_removed)        
 
 def show_umarfc(command, sender):
     print
@@ -188,7 +186,7 @@ def list_commands(command, sender):
 def sort_help():
     print
     "in sort_help"
-    sortList = "Try `sort <team name> <sort type>` \nHere is the list of sorts:\n"
+    sortList = "Try `sort <team> <sort type>` \nHere is the list of sorts:\n"
     for key in SORTS.keys():
         if (key not in FAKE_SORTS):
             sortList += (key + '\n')
@@ -202,10 +200,11 @@ def choose_standup_order(command, sender):
     command_string = command.split(' ')
     if len(command_string) <3 or command_string[2] not in SORTS:
         return sort_help()
-    team = command_string[1]
+    team = command_string[1].lower()
     sort = command_string[2]
     if team not in STANDUP_TEAMS:
         return "Can't sort a team that doesn't exist!"
+    update_reactions(team)
     team = STANDUP_TEAMS[team]["members"]
     if len(team) < 1:
         return 'The table is empty!'
@@ -223,8 +222,8 @@ def choose_standup_order(command, sender):
             volunteer = [get_name(match.group(1))]
             temp.insert(0, temp.pop(temp.index(volunteer[0]))) if len(volunteer) else temp
         
-        for member in temp:
-            tableString += '\t' + member + '\n' #TODO: add postscrum raised hand
+        for member in temp: #TODO: add postscrum raised hand
+            tableString += '\t' + member + '\n'
         return {
             'text': tableString,
             'channel': slack_client.api_call("conversations.open", users=sender)['channel']['id'] if command_string[2] == 'umar' else None
@@ -258,7 +257,6 @@ def number(command, sender):
     return number_obj.json()['text']
 
 def umar(command, sender, table):
-    slack_client.api_call("conversations.open", users=sender)['channel']['id']
     command_string = command.split(' ')
     num_umars = 10 if (len(command_string) < 4 or not is_valid_number(command_string[3])) else int(command_string[3])
     if (num_umars > 15):
@@ -267,7 +265,7 @@ def umar(command, sender, table):
     elif (num_umars < 1):
         remove_from_umarfanclub(sender)
         return ["You've been removed from the club"]
-    return [name for name in filter(lambda name: "umar" in name.lower(), map(get_name,table))] * num_umars
+    return [name for name in filter(lambda name: "umar" in name.lower(), map(get_name, table))] * num_umars
 
 def add_to_umarfanclub(sender):
     print
@@ -308,11 +306,10 @@ def is_valid_team_name(string):
     return True
 
 def get_name(member):
-    temp = slack_client.api_call("users.info", user=member)
-    return temp['user']['name']
+    return slack_client.api_call("users.info", user=member)['user']['name']
 
 def ps_usage():
-    output = 'To configure postscrum for your team, use "@acj ps [team]" along with one of the following:\n'
+    output = 'To configure postscrum for your team, use `ps <team>` along with one of the following:\n'
     output += '\t"time [24hr-time]": Sets the time for the postscrum message to appear in this channel.\n'
     output += '\t"message [message]": Sets the postscrum message. By default, the message is "Postscrum? :eyes:".\n'
     output += '\t"stop": Stops postscrum messages from appearing in this channel.\n'
@@ -325,7 +322,7 @@ def configure_postscrum (command, sender, channel):
     'in configure_postscrum func'
     params = command.split(' ')
     if len(params) > 2:
-        team = params[1]
+        team = params[1].lower()
         if team not in STANDUP_TEAMS:
             return "That team doesn't exist."
         if params[2] == "time" and len(params) > 3:
@@ -383,22 +380,23 @@ SORTS['umar'] = umar
 # === BOT COMMAND MAPPING END ===
 
 def update_reactions(team):
-    reset_reactions(team)
-    message_obj = slack_client.api_call(
-        "reactions.get",
-        channel=STANDUP_TEAMS[team]["postscrum"]["channel"],
-        timestamp=STANDUP_TEAMS[team]["postscrum"]["timestamp"],
-        full=False,
-    )["message"]
-    if "reactions" in message_obj:
-        users_reacted = []
-        for reaction in message_obj["reactions"]:
-            users_reacted += reaction["users"]
-        users_reacted = list(set(users_reacted)) # remove duplicates - not super necessary but probably cleaner
-        users_reacted = list(filter(lambda user: user in STANDUP_TEAMS[team]["members"], users_reacted)) # remove people who are not in the team
-        for user in users_reacted:
-            STANDUP_TEAMS[team]["members"][user]["has_postscrum"] = True
-        save_json(STANDUP_TEAMS)
+    if STANDUP_TEAMS[team]["postscrum"]["timestamp"]:
+        reset_reactions(team)
+        message_obj = slack_client.api_call(
+            "reactions.get",
+            channel=STANDUP_TEAMS[team]["postscrum"]["channel"],
+            timestamp=STANDUP_TEAMS[team]["postscrum"]["timestamp"],
+            full=False,
+        )["message"]
+        if "reactions" in message_obj:
+            users_reacted = []
+            for reaction in message_obj["reactions"]:
+                users_reacted += reaction["users"]
+            users_reacted = list(set(users_reacted)) # remove duplicates - not super necessary but probably cleaner
+            users_reacted = list(filter(lambda user: user in STANDUP_TEAMS[team]["members"], users_reacted)) # remove people who are not in the team
+            for user in users_reacted:
+                STANDUP_TEAMS[team]["members"][user]["has_postscrum"] = True
+            save_json(STANDUP_TEAMS)
 
 def reset_reactions(team):
     for user in STANDUP_TEAMS[team]["members"]:
