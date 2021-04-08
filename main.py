@@ -67,7 +67,7 @@ def show_team(command, sender):
         update_reactions(name)
         output = '{} consists of the following members:\n'.format(name)
         for member in team["members"]:
-            output += "\t" + get_name(member) + (" :hand:" if team["members"][member]["has_postscrum"] else "") + "\n"
+            output += "\t" + get_name(member)[:-11] + (" :hand:" if team["members"][member]["has_postscrum"] else "") + "\n"
         return output
 
 def show_teams(command, sender):
@@ -221,9 +221,11 @@ def choose_standup_order(command, sender):
             match = re.search(MENTION_REGEX, command_string[2])
             volunteer = [get_name(match.group(1))]
             temp.insert(0, temp.pop(temp.index(volunteer[0]))) if len(volunteer) else temp
-        
-        for member in temp: #TODO: add postscrum raised hand
-            tableString += '\t' + member + '\n'
+        for member in temp:
+            if team[member[-11:]]['has_postscrum']:
+                tableString += '\t' + member[:-11] + '\t:hand:\n'
+            else:
+                tableString += '\t' + member[:-11] + '\n'
         return {
             'text': tableString,
             'channel': slack_client.api_call("conversations.open", users=sender)['channel']['id'] if command_string[2] == 'umar' else None
@@ -283,12 +285,12 @@ def remove_from_umarfanclub(sender):
 
 def show_umarfc(command, sender):
     print
-    if len(team["members"]) == 0:
-        return '{} currently has no members :pensive:'.format(name)
+    if len(UMAR_FC["members"]) == 0:
+        return 'The fanclub currently has no members :pensive:'
     else:
-        output = '{} consists of the following members:\n'.format(name)
-        for member in team["members"]:
-            output += "\t" + get_name(member) + '\n'
+        output = 'The most elite people include the following members:\n'
+        for member in UMAR_FC["members"]:
+            output += "\t" + get_name(member)[:-11] + '\n'
         return output
 
 def is_valid_number(string):
@@ -306,13 +308,13 @@ def is_valid_team_name(string):
     return True
 
 def get_name(member):
-    return slack_client.api_call("users.info", user=member)['user']['name']
+    return slack_client.api_call("users.info", user=member)['user']['name'] + member 
 
 def ps_usage():
     output = 'To configure postscrum for your team, use `ps <team>` along with one of the following:\n'
-    output += '\t"time [24hr-time]": Sets the time for the postscrum message to appear in this channel.\n'
-    output += '\t"message [message]": Sets the postscrum message. By default, the message is "Postscrum? :eyes:".\n'
-    output += '\t"stop": Stops postscrum messages from appearing in this channel.\n'
+    output += '\t`time [24hr-time]`: Sets the time for the postscrum message to appear in this channel.\n'
+    output += '\t`message [message]`: Sets the postscrum message. By default, the message is "Postscrum? :eyes:".\n'
+    output += '\t`stop`: Stops postscrum messages from appearing in this channel.\n'
     output += 'Note: Each team can receive postscrum messages in only one channel, and the messages will not appear if a time is not set.'
     return output
 
@@ -329,7 +331,7 @@ def configure_postscrum (command, sender, channel):
             match = re.search(TIME_REGEX, params[3])
             if match:
                 STANDUP_TEAMS[team]["postscrum"]["channel"] = channel
-                STANDUP_TEAMS[team]["postscrum"]["time"] = ("0" if len(params[1]) == 4 else "") + params[3]
+                STANDUP_TEAMS[team]["postscrum"]["time"] = ("0" if len(params[3]) == 4 else "") + params[3]
                 save_json(STANDUP_TEAMS)
                 configure_scheduler()
                 return "Postscrum messages will appear in this channel at {} every weekday.".format(STANDUP_TEAMS[team]["postscrum"]["time"])

@@ -1,14 +1,33 @@
 {
+    "ev": {
+        "members": {
+            "U01S9CL9HRD": {
+                "has_postscrum": false
+            },
+            "U01SF8JFCBG": {
+                "has_postscrum": false
+            },
+            "U01SM1QDXM3": {
+                "has_postscrum": true
+            }
+        },
+        "postscrum": {
+            "channel": "C01TS7C8JAV",
+            "message": "React to this message if you have postscrum!",
+            "time": "11:59",
+            "timestamp": "1617897540.004100"
+        }
+    },
     "umar": {
         "members": {
             "U01RVSYDJN4": {
                 "has_postscrum": false
             },
             "U01S9CL9HRD": {
-                "has_postscrum": false
+                "has_postscrum": true
             },
             "U01SF8JFCBG": {
-                "has_postscrum": false
+                "has_postscrum": true
             },
             "U01SM1QDXM3": {
                 "has_postscrum": false
@@ -18,10 +37,11 @@
             }
         },
         "postscrum": {
-            "channel": "",
+            "channel": "C01SYR78TFZ",
             "message": "Postscrum? :eyes:",
             "message_id": "",
-            "time": ""
+            "time": "11:37",
+            "timestamp": "1617896220.002300"
         }
     }
 }
