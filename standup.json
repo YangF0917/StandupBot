@@ -1,4 +1,29 @@
 {
+    "all": {
+        "members": {
+            "U01S9CL9HRD": {
+                "has_postscrum": false
+            },
+            "U01SM1QDXM3": {
+                "has_postscrum": false
+            },
+            "U01SM7951QD": {
+                "has_postscrum": false
+            },
+            "U01T9RB9V6K": {
+                "has_postscrum": false
+            },
+            "U01U36LG257": {
+                "has_postscrum": false
+            }
+        },
+        "postscrum": {
+            "channel": "",
+            "message": "Postscrum? :eyes:",
+            "time": "",
+            "timestamp": ""
+        }
+    },
     "ev": {
         "members": {
             "U01S9CL9HRD": {

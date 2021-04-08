@@ -37,7 +37,7 @@ clearteams:
 - coming in a future patch
 
 sort `<team> <SortType> <option>`:
-- sorts the members of the specified team (based on username)
+- sorts the members of the specified team (based on username) and outputs the list (with indicators beside users with postscrum)
 - SortTypes:
    - `alpha`: alphabetical order
    - `ralpha`: reverse alphabetical order
@@ -48,7 +48,6 @@ sort `<team> <SortType> <option>`:
    - `pickme`: moves the sender to the front of the list
    - `last`: moves the sender to the back of the list
    - `@<user>`: moves the specified user to the front of the list
-- postscrum indicators coming in a future patch
 
 ps `<team>` `<option>`:
 - configures daily postscrum messages (weekdays) for the channel in which the command is sent

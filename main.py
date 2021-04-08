@@ -223,7 +223,7 @@ def choose_standup_order(command, sender):
             temp.insert(0, temp.pop(temp.index(volunteer[0]))) if len(volunteer) else temp
         for member in temp:
             if team[member[-11:]]['has_postscrum']:
-                tableString += '\t' + member[:-11] + '\t:hand:\n'
+                tableString += '\t' + member[:-11] + ' :hand:\n'
             else:
                 tableString += '\t' + member[:-11] + '\n'
         return {
@@ -352,7 +352,12 @@ def configure_postscrum (command, sender, channel):
             return 'Postscrum messages have been stopped in this channel. To reconfigure, use the "time" postscrum option.'
     return ps_usage()
 
+def animetop10(command, sender):
+    x=requests.get('https://api.jikan.moe/v3/user/typhlosion9000/animelist',params={'order_by':'score','sort':'descending'})
+    return display_anime(x.json()['anime'][0])
 
+def display_anime(data):
+    return {"pretext": data['image_url'], "text": "text-world"}
 # === ALL POSSIBLE BOT COMMANDS END ===
 
 # === BOT COMMAND MAPPING ===
@@ -368,7 +373,7 @@ CHOICES['umarfc'] = show_umarfc
 CHOICES['advice'] = advice
 CHOICES['number'] = number
 CHOICES['addteam'] = add_team
-
+CHOICES['top10'] = animetop10
 CHOICES['ps'] = configure_postscrum
 
 # sorts
