@@ -24,6 +24,7 @@ RTM_READY_DELAY = 1 # 1 second delay between reading from RTM
 EXAMPLE_COMMAND = "help"
 MENTION_REGEX = "^<@(|[WU].+?)>(.*)"
 ADD_USER_REGEX = "<@(|[WU].+?)>"
+USER_ID = "[WU]\w{10}?"
 TIME_REGEX = "^([01]?[0-9]|2[0-3]):[0-5][0-9]$"
 CHOICES = {}
 SORTS = {}
@@ -67,7 +68,7 @@ def show_team(command, sender):
         update_reactions(name)
         output = '{} consists of the following members:\n'.format(name)
         for member in team["members"]:
-            output += "\t" + get_name(member)[:-11] + (" :hand:" if team["members"][member]["has_postscrum"] else "") + "\n"
+            output += "\t" + get_name(member) + (" :hand:" if team["members"][member]["has_postscrum"] else "") + "\n"
         return output
 
 def show_teams(command, sender):
@@ -175,10 +176,10 @@ def show_umarfc(command, sender):
 def list_commands(command, sender):
     print
     'in list_commands func'
-    commandList = 'Here are a list of commands:\n'
+    commandList = 'Here is a list of commands:\n'
     for key, value in CHOICES.items():
         if (key not in FAKE_FUNCTIONS):
-            commandList += (key + '\n')
+            commandList += '\t' + key + '\n'
     commandList += "For a full explanation of all commands, view the README here:\n"
     commandList += "https://github.com/YangF0917/ACJBot"
     return commandList
@@ -189,7 +190,7 @@ def sort_help():
     sortList = "Try `sort <team> <sort type>` \nHere is the list of sorts:\n"
     for key in SORTS.keys():
         if (key not in FAKE_SORTS):
-            sortList += (key + '\n')
+            sortList += '\t' + key + '\n'
     sortList += "You can probably figure out what each one is ;)\nOr you could just read the documentation on https://github.com/YangF0917/ACJBot"
     return sortList
 
@@ -222,31 +223,33 @@ def choose_standup_order(command, sender):
             volunteer = [get_name(match.group(1))]
             temp.insert(0, temp.pop(temp.index(volunteer[0]))) if len(volunteer) else temp
         for member in temp:
-            if team[member[-11:]]['has_postscrum']:
-                tableString += '\t' + member[:-11] + '\t:hand:\n'
+            match = re.search(USER_ID, member)
+            if match:
+                match = match.group(0)
+                tableString += '\t' + get_name(match) + (' :hand:' if team[match]['has_postscrum'] else '') + '\n'
             else:
-                tableString += '\t' + member[:-11] + '\n'
+                tableString += member
         return {
             'text': tableString,
             'channel': slack_client.api_call("conversations.open", users=sender)['channel']['id'] if command_string[2] == 'umar' else None
         }
 
 def alpha_order(command, sender, table):
-    return sorted(map(get_name, table))
+    return sorted(table, key = get_name)
 
 def reverse_alpha_order(command, sender, table):
-    return sorted(map(get_name, table), reverse=True)
+    return sorted(table, key = get_name, reverse=True)
 
 def name_length_order(command, sender, table):
-    return sorted(map(get_name, table), key = len)
+    return sorted(table, key = lambda x: len(get_name(x)))
 
 def rev_name_length_order(command, sender, table):
-    return sorted(map(get_name, table), key = len, reverse = True)
+    return sorted(table, key = lambda x: len(get_name(x)), reverse = True)
 
 def randomize_standup(command, sender, table):
     users = [mem for mem in table]
     random.shuffle(users)
-    return map(get_name, users)
+    return users
 
 def advice(command, sender):
     advice_obj = requests.get('https://api.adviceslip.com/advice')
@@ -267,7 +270,7 @@ def umar(command, sender, table):
     elif (num_umars < 1):
         remove_from_umarfanclub(sender)
         return ["You've been removed from the club"]
-    return [name for name in filter(lambda name: "umar" in name.lower(), map(get_name, table))] * num_umars
+    return [name for name in filter(lambda name: "umar" in get_name(name).lower(), table)] * num_umars
 
 def add_to_umarfanclub(sender):
     print
@@ -290,7 +293,7 @@ def show_umarfc(command, sender):
     else:
         output = 'The most elite people include the following members:\n'
         for member in UMAR_FC["members"]:
-            output += "\t" + get_name(member)[:-11] + '\n'
+            output += "\t" + get_name(member) + '\n'
         return output
 
 def is_valid_number(string):
@@ -308,7 +311,7 @@ def is_valid_team_name(string):
     return True
 
 def get_name(member):
-    return slack_client.api_call("users.info", user=member)['user']['name'] + member 
+    return slack_client.api_call("users.info", user=member)['user']['name']
 
 def ps_usage():
     output = 'To configure postscrum for your team, use `ps <team>` along with one of the following:\n'
@@ -357,19 +360,18 @@ def configure_postscrum (command, sender, channel):
 
 # === BOT COMMAND MAPPING ===
 
-CHOICES['show'] = show_team
 CHOICES['showteams'] = show_teams
+CHOICES['addteam'] = add_team
 CHOICES['removeteam'] = remove_team
-CHOICES['help'] = list_commands
+CHOICES['show'] = show_team
 CHOICES['add'] = add_member
 CHOICES['remove'] = remove_member
+CHOICES['ps'] = configure_postscrum
 CHOICES['sort'] = choose_standup_order
 CHOICES['umarfc'] = show_umarfc
 CHOICES['advice'] = advice
 CHOICES['number'] = number
-CHOICES['addteam'] = add_team
-
-CHOICES['ps'] = configure_postscrum
+CHOICES['help'] = list_commands
 
 # sorts
 SORTS['alpha'] = alpha_order
