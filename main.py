@@ -225,14 +225,12 @@ def choose_standup_order(command, sender, channel):
         tableString = 'Today\'s standup order:\n'
         temp = SORTS[sort](command, sender, team)
         if (len(command_string) > 3 and command_string[3] == "pickme"):
-            sender_name = get_name(sender)
-            temp.insert(0, temp.pop(temp.index(sender_name))) if sender_name in temp else temp
+            temp.insert(0, temp.pop(temp.index(sender))) if sender in temp else temp
         elif (len(command_string) > 3 and command_string[3] == "last"):
-            sender_name = get_name(sender)
-            temp.append(temp.pop(temp.index(sender_name))) if sender_name in temp else temp
+            temp.append(temp.pop(temp.index(sender))) if sender in temp else temp
         elif (len(command_string) > 3 and command_string[2] != 'umar'):
-            match = re.search(MENTION_REGEX, command_string[2])
-            volunteer = [get_name(match.group(1))]
+            match = re.search(MENTION_REGEX, command_string[3])
+            volunteer = [match.group(1)]
             temp.insert(0, temp.pop(temp.index(volunteer[0]))) if len(volunteer) else temp
         for member in temp:
             match = re.search(USER_ID, member)
@@ -278,7 +276,7 @@ def umar(command, sender, table):
     num_umars = 10 if (len(command_string) < 4 or not is_valid_number(command_string[3])) else int(command_string[3])
     if (num_umars > 15):
         add_to_umarfanclub(sender)
-        return ["Ȋ̭̼̭̩̜̖̭̱͆̎͛ͮ̾͒̊ͪ͗̓̔͒ ̪͚͎ͦ̽̇̏̀̆̅ͅw̱͔̭̦̃ͣ̔ͫͯͤ͐̏ͮ̈̏̃ͥ͐́o̝͓͉̻̖͉̻̻͈̪̰̺͊̌ͨ̒́ͮͅu̟̣͎̼̦̥̝͕͍̟̫̫̞ͫͤ̿̂̉ͣ̽͛͐l͖͉͖̠̲̤͎͍̩͈͓̠̗̘̻̣͖̅͛̍͛ͧ͌ͧ̂͑ͯd̬̤̳̘̰̰͎ͬ̊̌̿̈ͬ ͙͖̝͚̄̾͗̾ͤ̌ͮ̃ͫ̄̽ͪ̾ͨl̲͔̬̗̲̥͍͓̹ͮͫͣ̿̈́̆͋ͬͪ̄̽i͙̝͔̖̳͔̬͗̈́̓̐̍̓ͯ̑ͭ͋̒̒͒͋̒̽̽k̻̺̙̞̭̩̤̙̹ͦͦ̄̾e̜̥̙̗͖̰͓̳̠̝̖͉ͫ̍̾̔̔̐ͮ̄͒̄ͤ̓ ̱͕̩͉͛̐̉̏ͩͪͨͩ͑̅̅͌̔̐̀̑͆ț̞̻̩̲̏̇ͧ͌͌͒ͬ͛̍ͫ̽ͫ͛͊̑ͨ̚o͚̩̰̯̘̟͈̦̲̱̥͙͗̀̉̐ͮ̐ͧ͐͌̒͊͌͛̃̓̍̏͊̚ ̘̠̻̭̏̃̿ͥp̺͙̙͉͎̟͓͔̻̮͓̎ͧ͂ͭͫ̃͐ͪ̅̊͑ē̫͙̰̠͉̭̱̣̖̺̮ͫ̋͌̍̔̎ṙ̥͚͈̘̻̘̟̯͙̃ͥ̂ͯ͑̈̃̒̑̋ͯ͊s̬̻̪͔̩̲̼̲̠͈͖ͫ̌̾̋ͨ̉ͤͮͮ͒̚o̺͈̙͗́͐ͨ̊̈̅̋͆͆ͣ̎͐͑ͦn̪̝͔̖̜̰͓̒̉̇ͯ́̀ͣ͊͗ǎ̬̳̤̰̹͎̏̐̄ͦͤ̍́ͮ̇̚l̫̼̼̝͖̱͚̥͖̪͎͂̋͆͌ͫ̉ͣl̲̱͖̯͚̗͍̐̇͐ͪy̥̗̲̣̩̻̺̗̝̣̰̦͕͕̠ͪ̈́̈̒̀̏̆́ͫͨ̓̀̇̄̔̓̄̑ ̲̹̦̖ͥ̏ͮ̾ͬ̌ͮ̎ͪ̀͋̃̏i̠̙̥̱͍̻͍̺͕̜͈̥̱̰̘̲̓ͮ̓n̟͍̺̻͇̻̘̩̤̥̱͇̣̭͚̬͚̑ͨ̊͋̽͂̒̿ͯ̍̔̈́ͫ͂̋̓̋ͅv̯̻̬̺̰̱̞͔̣̖͖̜̙̉ͯ̋̋͌̾́ͅi͉͇͇̭͉̤̺̭͈̜͕̹͚̗̍͂̃ͤ͂͑ͩͫͣ͌̀̆͒̓̌ͅt͉͔͓͇̪͈͍̗̭͕̦̝̟͙̿ͤ̒ͨ̃ͦ̍ͧ̉̏̇̾̉͊͋e̩̘̯͎͙̬̳̪̺͎̺̜̯͉͙̦̟̓ͦͥ̑ͮ̓ͦ̐ͦͬ͋ ̙̠̻̟̻̦̻̭̣̮͔͖̗̖̣̥͍̓͛̀͐̅͊͌ͬͪ̈́͊ỹ̦̟͙̗͓̠̱̎́̏o̫͓̲͙̼̯͐ͪ̐̅̈́̏̉ͩͦ̃͗̿͗̆u̝̥̬̤ͮ̉̎̔̈͐͑̏̅͋ͦͣͯ͒̓ͥ͌̊ ̱̜̜̻͖̩̳̱̰͓͔̩̤͈ͭͣͦͤ̔̈ͭ̇̓t̩̺̱̬̺͓̳͉̪͔̫̻̗̮͖̱̖̤ͩ͆̾ͣ̓͆͐o̙̦̭̩̟͇̝̹̫̰̎ͥ̾ͯͭ̐̂̀̔̆́̃͛ͫ̓ ̥̲̱̝̗̤͍̪̼̦̦̜̪̜ͧ̎̉̆̔͋t̫̪̮̯̘̿ͤ̊̆͊͆h̫̼̭̟̯̩̣̻̩͙̭̼̤̜̰̞̳͈ͮ̈́̓́̌e̻̩̻̩͙̻̩͓̩̹̖̹̥ͬͬ̍ͥͫ̋̇ͮ͒̿̓͑̈́͛͒͛̚ ̥̪̗̺̗̘̗͈̻̫̙̮̲̱̩̮͚ͧ̍ͦc͖͕̪̙̦̲͚̲͙̝͉͕̥͇̼̠̦̝̭̉ͨͣ͛͊̑̍̈ͬͬ͛ͣͪͬ̽ͧ̒̆̅l̙̬̭͍͙̬̑́͌́͆̿̎̐ͨ̀ͅu̲̤̦̲̣̳̝̦̝͌̽̓͋̉̐ͥ͌ͪ͛ͨḇ̰̗̞͓̞̬͍͇͆͊͐͋͒̀ͨͦ̃̉ͫͭ̿̾̉̓͛͛̚ ͕̗̟̘̥̘̘̝͖͍̤̲̺̞̭̭ͥ͑ͩ̇̎̾̍̽́ͪ̓̿̚ͅ~̹̝̹̺͈̦͕͍͉̤̤͍̦ͫ̐̾̓̂ͣ̂͗ͦ̇ͤ̂ͩ͛̃̚ ̻̼͓͇̼̳̖͓͍̥̩̼͇̳̣͙͖̪͊͛̿̿̽̎̇͆ͪ́ͫA̘̥̲͇͔̻̮͓̞͚͔̥̹̅͋̽̔̑̎͂̄̊ͧͅC̫̻̗̙̪̔ͨ̽̑̚J͉͚̦̘ͥ͒̃̒̉̈́̅̆̆͆ͩͨ́"]
+        return ["Welcome to the club :football:"]
     elif (num_umars < 1):
         remove_from_umarfanclub(sender)
         return ["You've been removed from the club"]
