@@ -31,7 +31,7 @@ SORTS = {}
 FAKE_FUNCTIONS = ['umarfc'] #TODO: delete these messages if they are typed in a team channel
 FAKE_SORTS = ['umar']
 NUMBER_ENDPOINTS = ['trivia', 'year', 'date', 'math']
-CHANNEL_REQ = ['ps']
+CHANNEL_REQ = ['ps', 'sort', 'umarfc']
 EMPTY_TEAM = {
         "postscrum": {
             "channel": "",
@@ -101,6 +101,8 @@ def add_team(command, sender):
     if len(params) < 2:
         return "Please specify a team name."
     name = params[1].lower()
+    if (not is_valid_team_name(name)):
+        return "Please give a valid team name"
     if name in STANDUP_TEAMS:
         return "A team with this name already exists."
     STANDUP_TEAMS[name] = EMPTY_TEAM
@@ -158,13 +160,20 @@ def remove_member(command, sender):
         return "{} just removed someone from the team - say bye! :wave:".format("<@"+sender+">")
     return "{} just removed {} members from the team - say bye! :wave:".format("<@"+sender+">", users_removed)        
 
-def show_umarfc(command, sender):
+def show_umarfc(command, sender, channel):
     print
     'in show_umarfc func'
+    if (channel[0] != 'D'):
+        return list_commands()
     dm_channel = slack_client.api_call("conversations.open", users=sender)['channel']['id']
-    if (sender in BOX_4):
+    if (sender in UMAR_FC["members"]):
+        if len(UMAR_FC["members"]) == 0:
+            return 'The club currently has no members :pensive:'
+        output = "The club contains:\n"
+        for member in UMAR_FC["members"]:
+            output += "\t" + get_name(member) + '\n'
         return {
-            'text': show_table(command, sender, BOX_4),
+            'text': output,
             'channel': dm_channel
         }
     else:
@@ -194,7 +203,7 @@ def sort_help():
     sortList += "You can probably figure out what each one is ;)\nOr you could just read the documentation on https://github.com/YangF0917/ACJBot"
     return sortList
 
-def choose_standup_order(command, sender):
+def choose_standup_order(command, sender, channel):
     print
     "in choose_standup_order"
 
@@ -203,6 +212,9 @@ def choose_standup_order(command, sender):
         return sort_help()
     team = command_string[1].lower()
     sort = command_string[2]
+    if (sort == 'umar' and channel[0] != 'D'):
+        return sort_help()
+    
     if team not in STANDUP_TEAMS:
         return "Can't sort a team that doesn't exist!"
     update_reactions(team)
@@ -266,7 +278,7 @@ def umar(command, sender, table):
     num_umars = 10 if (len(command_string) < 4 or not is_valid_number(command_string[3])) else int(command_string[3])
     if (num_umars > 15):
         add_to_umarfanclub(sender)
-        return ["Welcome to the Umar fanclub :eyes:"]
+        return ["Ȋ̭̼̭̩̜̖̭̱͆̎͛ͮ̾͒̊ͪ͗̓̔͒ ̪͚͎ͦ̽̇̏̀̆̅ͅw̱͔̭̦̃ͣ̔ͫͯͤ͐̏ͮ̈̏̃ͥ͐́o̝͓͉̻̖͉̻̻͈̪̰̺͊̌ͨ̒́ͮͅu̟̣͎̼̦̥̝͕͍̟̫̫̞ͫͤ̿̂̉ͣ̽͛͐l͖͉͖̠̲̤͎͍̩͈͓̠̗̘̻̣͖̅͛̍͛ͧ͌ͧ̂͑ͯd̬̤̳̘̰̰͎ͬ̊̌̿̈ͬ ͙͖̝͚̄̾͗̾ͤ̌ͮ̃ͫ̄̽ͪ̾ͨl̲͔̬̗̲̥͍͓̹ͮͫͣ̿̈́̆͋ͬͪ̄̽i͙̝͔̖̳͔̬͗̈́̓̐̍̓ͯ̑ͭ͋̒̒͒͋̒̽̽k̻̺̙̞̭̩̤̙̹ͦͦ̄̾e̜̥̙̗͖̰͓̳̠̝̖͉ͫ̍̾̔̔̐ͮ̄͒̄ͤ̓ ̱͕̩͉͛̐̉̏ͩͪͨͩ͑̅̅͌̔̐̀̑͆ț̞̻̩̲̏̇ͧ͌͌͒ͬ͛̍ͫ̽ͫ͛͊̑ͨ̚o͚̩̰̯̘̟͈̦̲̱̥͙͗̀̉̐ͮ̐ͧ͐͌̒͊͌͛̃̓̍̏͊̚ ̘̠̻̭̏̃̿ͥp̺͙̙͉͎̟͓͔̻̮͓̎ͧ͂ͭͫ̃͐ͪ̅̊͑ē̫͙̰̠͉̭̱̣̖̺̮ͫ̋͌̍̔̎ṙ̥͚͈̘̻̘̟̯͙̃ͥ̂ͯ͑̈̃̒̑̋ͯ͊s̬̻̪͔̩̲̼̲̠͈͖ͫ̌̾̋ͨ̉ͤͮͮ͒̚o̺͈̙͗́͐ͨ̊̈̅̋͆͆ͣ̎͐͑ͦn̪̝͔̖̜̰͓̒̉̇ͯ́̀ͣ͊͗ǎ̬̳̤̰̹͎̏̐̄ͦͤ̍́ͮ̇̚l̫̼̼̝͖̱͚̥͖̪͎͂̋͆͌ͫ̉ͣl̲̱͖̯͚̗͍̐̇͐ͪy̥̗̲̣̩̻̺̗̝̣̰̦͕͕̠ͪ̈́̈̒̀̏̆́ͫͨ̓̀̇̄̔̓̄̑ ̲̹̦̖ͥ̏ͮ̾ͬ̌ͮ̎ͪ̀͋̃̏i̠̙̥̱͍̻͍̺͕̜͈̥̱̰̘̲̓ͮ̓n̟͍̺̻͇̻̘̩̤̥̱͇̣̭͚̬͚̑ͨ̊͋̽͂̒̿ͯ̍̔̈́ͫ͂̋̓̋ͅv̯̻̬̺̰̱̞͔̣̖͖̜̙̉ͯ̋̋͌̾́ͅi͉͇͇̭͉̤̺̭͈̜͕̹͚̗̍͂̃ͤ͂͑ͩͫͣ͌̀̆͒̓̌ͅt͉͔͓͇̪͈͍̗̭͕̦̝̟͙̿ͤ̒ͨ̃ͦ̍ͧ̉̏̇̾̉͊͋e̩̘̯͎͙̬̳̪̺͎̺̜̯͉͙̦̟̓ͦͥ̑ͮ̓ͦ̐ͦͬ͋ ̙̠̻̟̻̦̻̭̣̮͔͖̗̖̣̥͍̓͛̀͐̅͊͌ͬͪ̈́͊ỹ̦̟͙̗͓̠̱̎́̏o̫͓̲͙̼̯͐ͪ̐̅̈́̏̉ͩͦ̃͗̿͗̆u̝̥̬̤ͮ̉̎̔̈͐͑̏̅͋ͦͣͯ͒̓ͥ͌̊ ̱̜̜̻͖̩̳̱̰͓͔̩̤͈ͭͣͦͤ̔̈ͭ̇̓t̩̺̱̬̺͓̳͉̪͔̫̻̗̮͖̱̖̤ͩ͆̾ͣ̓͆͐o̙̦̭̩̟͇̝̹̫̰̎ͥ̾ͯͭ̐̂̀̔̆́̃͛ͫ̓ ̥̲̱̝̗̤͍̪̼̦̦̜̪̜ͧ̎̉̆̔͋t̫̪̮̯̘̿ͤ̊̆͊͆h̫̼̭̟̯̩̣̻̩͙̭̼̤̜̰̞̳͈ͮ̈́̓́̌e̻̩̻̩͙̻̩͓̩̹̖̹̥ͬͬ̍ͥͫ̋̇ͮ͒̿̓͑̈́͛͒͛̚ ̥̪̗̺̗̘̗͈̻̫̙̮̲̱̩̮͚ͧ̍ͦc͖͕̪̙̦̲͚̲͙̝͉͕̥͇̼̠̦̝̭̉ͨͣ͛͊̑̍̈ͬͬ͛ͣͪͬ̽ͧ̒̆̅l̙̬̭͍͙̬̑́͌́͆̿̎̐ͨ̀ͅu̲̤̦̲̣̳̝̦̝͌̽̓͋̉̐ͥ͌ͪ͛ͨḇ̰̗̞͓̞̬͍͇͆͊͐͋͒̀ͨͦ̃̉ͫͭ̿̾̉̓͛͛̚ ͕̗̟̘̥̘̘̝͖͍̤̲̺̞̭̭ͥ͑ͩ̇̎̾̍̽́ͪ̓̿̚ͅ~̹̝̹̺͈̦͕͍͉̤̤͍̦ͫ̐̾̓̂ͣ̂͗ͦ̇ͤ̂ͩ͛̃̚ ̻̼͓͇̼̳̖͓͍̥̩̼͇̳̣͙͖̪͊͛̿̿̽̎̇͆ͪ́ͫA̘̥̲͇͔̻̮͓̞͚͔̥̹̅͋̽̔̑̎͂̄̊ͧͅC̫̻̗̙̪̔ͨ̽̑̚J͉͚̦̘ͥ͒̃̒̉̈́̅̆̆͆ͩͨ́"]
     elif (num_umars < 1):
         remove_from_umarfanclub(sender)
         return ["You've been removed from the club"]
@@ -286,16 +298,6 @@ def remove_from_umarfanclub(sender):
         UMAR_FC["members"].pop(UMAR_FC["members"].index(sender))
     save_json(UMAR_FC,'ufc.json')
 
-def show_umarfc(command, sender):
-    print
-    if len(UMAR_FC["members"]) == 0:
-        return 'The fanclub currently has no members :pensive:'
-    else:
-        output = 'The most elite people include the following members:\n'
-        for member in UMAR_FC["members"]:
-            output += "\t" + get_name(member) + '\n'
-        return output
-
 def is_valid_number(string):
     if string[0] == "-":
         string = string[1:]
@@ -305,10 +307,7 @@ def is_valid_number(string):
     return True
 
 def is_valid_team_name(string):
-    for letter in string:
-        if letter in ILLEGAL_CHARACTERS:
-            return False
-    return True
+    return re.search("^\w+$", string)
 
 def get_name(member):
     return slack_client.api_call("users.info", user=member)['user']['name']
