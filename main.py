@@ -52,7 +52,7 @@ TEAM_DOES_NOT_EXIST = 'That team doesn\'t exist.'
 NO_NAME = 'Please specify a team name.'
 INVALID_NAME = 'Please provide a valid team name.'
 CHANNEL_ONLY = 'This command can only be used in a channel.'
-EMPTY_TEAM = 'That team is empty :pensive:'
+TEAM_IS_EMPTY = 'That team is empty :pensive:'
 
 # initialize objects
 with open('ufc.json') as f:
@@ -73,7 +73,7 @@ def show_team(command, sender):
         return TEAM_DOES_NOT_EXIST
     team = STANDUP_TEAMS[name]
     if len(team['members']) == 0:
-        return EMPTY_TEAM
+        return TEAM_IS_EMPTY
     else:
         update_reactions(name)
         output = f'{name} consists of the following members:\n'
@@ -117,7 +117,8 @@ def add_team(command, sender):
 
 def backup_usage():
     output = 'Use `backup` with one of the following options:\n'
-    output += '\t`show`: Shows all teams currently stored in the backup file.\n'
+    output += '\t`showteams`: Shows all teams currently stored in the backup file.\n'
+    output += '\t`show <team>`: Shows backed up team\'s settings currently stored in the backup file.\n'
     output += '\t`add <team>`: Backs up the specified team.\n'
     output += '\t`restore <team>`: Restores the specified team from the backup file.\n'
     output += '\t`remove <team>`: Removes the specified team from the backup file.'
@@ -125,13 +126,20 @@ def backup_usage():
 
 def handle_backup(command, sender): # TODO maybe: add a time for when the backup was created?
     params = command.split(' ')
-    if len(params) > 1 and params[1].lower() == 'show':
+    if len(params) > 1 and params[1].lower() == 'showteams':
         if not len(BACKUP):
             return 'There are no teams backed up.'
         output = 'Backed up teams are as follows: \n'
         for key in BACKUP:
             output += f'\t{key}\n'
         return output
+    if len(params) > 1 and params[1].lower() == 'show':
+        if(len(params) == 2):
+            return 'Please specify a team name after `show`'
+        team = params[2]
+        if (not is_valid_team_name(team)):
+            return INVALID_NAME
+        return show_backup(team)
     elif len(params) > 2 and params[1].lower() in BACKUP_OPTIONS:
         option = params[1].lower()
         team = params[2].lower()
@@ -156,7 +164,19 @@ def handle_backup(command, sender): # TODO maybe: add a time for when the backup
             save_json(BACKUP, 'backup.json')
             return f'The backup for {team} has been removed from the file.'
     return backup_usage()
-    
+
+def show_backup(team):
+    if team not in BACKUP:
+        'That team hasn\'t been backed up.'
+    output = f'The backup for {team} is as follows\n'
+    output += 'Members:\n'
+    for name in BACKUP[team]['members']:
+        output += '\t' + get_name(name)+ '\n'
+    output += 'Postscrum Settings:\n'
+    output += '\tTime: ' + (BACKUP[team]['postscrum']['time'] or "Not set") + '\n'
+    output += '\tMessage: ' + BACKUP[team]['postscrum']['message'] + '\n'
+    return output    
+
 def save_json(table, file='standup.json'):
     with open(file, 'w') as json_file:
         json.dump(table, json_file, indent = 4, sort_keys=True)
@@ -171,10 +191,9 @@ def add_member(command, sender):
     users_added = 0
     for token in range(2, len(params)):
         match = re.search(ADD_USER_REGEX, params[token])
-        if match:
-            if match[1] not in STANDUP_TEAMS[team]['members']:
-                STANDUP_TEAMS[team]['members'][match[1]] = copy.deepcopy(EMPTY_MEMBER)
-                users_added += 1
+        if match and match[1] not in STANDUP_TEAMS[team]['members']:
+            STANDUP_TEAMS[team]['members'][match[1]] = copy.deepcopy(EMPTY_MEMBER)
+            users_added += 1
     if users_added == 0:
         return 'No users added - either they don\'t exist or they\'re already in the team.'
     save_json(STANDUP_TEAMS)
@@ -256,7 +275,7 @@ def choose_standup_order(command, sender, channel):
     update_reactions(team)
     team = STANDUP_TEAMS[team]['members']
     if len(team) < 1:
-        return EMPTY_TEAM
+        return TEAM_IS_EMPTY
     else:
         tableString = 'Today\'s standup order:\n'
         temp = SORTS[sort](command, sender, team)
