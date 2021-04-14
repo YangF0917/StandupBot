@@ -24,7 +24,7 @@ add `<team>` `@<user>...`:
 remove `<team> @<user>`:
 - removes the mentioned user from the specified team
 
-showteams `<team>`:
+showteams:
 - prints a list of all existing teams
 
 addteam `<team>`:
@@ -33,8 +33,13 @@ addteam `<team>`:
 removeteam `<team>`:
 - deletes the team with the name specified if it exists
 
-clearteams:
-- coming in a future patch
+backup `<option>`:
+- manages the backup file
+- Options:
+   - `show`: lists the teams that are currently backed up
+   - `add <team>`: adds the specified team to the backup file
+   - `restore <team>`: restores the specified team from the backup file
+   - `remove <team>`: removes the specified team from the backup file
 
 sort `<team> <SortType> <option>`:
 - sorts the members of the specified team (based on username)
@@ -48,13 +53,13 @@ sort `<team> <SortType> <option>`:
    - `pickme`: moves the sender to the front of the list
    - `last`: moves the sender to the back of the list
    - `@<user>`: moves the specified user to the front of the list
-- postscrum indicators coming in a future patch
+- adds postscrum indicators to users that have reacted to their team's postscrum message
 
 ps `<team>` `<option>`:
 - configures daily postscrum messages (weekdays) for the channel in which the command is sent
 - Options:
-   - `time <24-hr time>`: sets the time the message to be sent
-   - `message <message>`: sets the text of the message to be sent
+   - `time` `<24-hr time>`: sets the time the message to be sent
+   - `message` `<message>`: sets the text of the message to be sent
    - `stop`: removes current configuration
 - users should react to the message if they have postscrum
 
