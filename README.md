@@ -33,10 +33,13 @@ addteam `<team>`:
 removeteam `<team>`:
 - deletes the team with the name specified if it exists
 
-backup `<team>`:
-- backs up the current team
-
-restore `<team>`:
+backup `<option>`:
+- manages the backup file
+- Options:
+   - `show`: lists the teams that are currently backed up
+   - `add <team>`: adds the specified team to the backup file
+   - `restore <team>`: restores the specified team from the backup file
+   - `remove <team>`: removes the specified team from the backup file
 
 sort `<team> <SortType> <option>`:
 - sorts the members of the specified team (based on username)

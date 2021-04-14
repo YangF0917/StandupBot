@@ -119,7 +119,7 @@ def backup_usage():
     output = 'Use `backup` with one of the following options:\n'
     output += '\t`show`: Shows all teams currently stored in the backup file.\n'
     output += '\t`add <team>`: Backs up the specified team.\n'
-    output += '\t`restore <team>`: Restores the specified team to the standup list.\n'
+    output += '\t`restore <team>`: Restores the specified team from the backup file.\n'
     output += '\t`remove <team>`: Removes the specified team from the backup file.'
     return output
 
