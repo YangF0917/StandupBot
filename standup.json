@@ -2,17 +2,30 @@
     "ev": {
         "members": {
             "U01SF8JFCBG": {
-                "has_postscrum": false
+                "has_postscrum": true
             },
             "U01SM1QDXM3": {
-                "has_postscrum": true
+                "has_postscrum": false
             }
         },
         "postscrum": {
-            "channel": "C01U5HN4SKV",
+            "channel": "C01U8JA5VPD",
             "message": "Postscrum? :eyes:",
-            "time": "12:05",
-            "timestamp": "1618329901.023700"
+            "time": "01:36",
+            "timestamp": "1618378560.002100"
+        }
+    },
+    "ev1": {
+        "members": {
+            "U01SF8JFCBG": {
+                "has_postscrum": false
+            }
+        },
+        "postscrum": {
+            "channel": "",
+            "message": "Postscrum? :eyes:",
+            "time": "",
+            "timestamp": ""
         }
     },
     "f": {

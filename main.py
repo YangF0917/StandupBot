@@ -26,8 +26,10 @@ MENTION_REGEX = '^<@(|[WU].+?)>(.*)'
 ADD_USER_REGEX = '<@(|[WU].+?)>'
 USER_ID = '[WU]\w{10}?'
 TIME_REGEX = '^([01]?[0-9]|2[0-3]):[0-5][0-9]$'
+TEAM_NAME_REGEX = '^\w+$'
 CHOICES = {}
 SORTS = {}
+BACKUP_OPTIONS = ['add', 'restore', 'remove', 'show']
 FAKE_FUNCTIONS = ['umarfc']
 FAKE_SORTS = ['umar']
 NUMBER_ENDPOINTS = ['trivia', 'year', 'date', 'math']
@@ -45,6 +47,13 @@ EMPTY_MEMBER = {
         'has_postscrum': False,
     }
 
+# default messages
+TEAM_DOES_NOT_EXIST = 'That team doesn\'t exist.'
+NO_NAME = 'Please specify a team name.'
+INVALID_NAME = 'Please provide a valid team name.'
+CHANNEL_ONLY = 'This command can only be used in a channel.'
+EMPTY_TEAM = 'That team is empty :pensive:'
+
 # initialize objects
 with open('ufc.json') as f:
   UMAR_FC = json.load(f)
@@ -52,18 +61,19 @@ with open('standup.json') as f:
   STANDUP_TEAMS = json.load(f)
 with open('backup.json') as f:
   BACKUP = json.load(f)
+
 # === BOT COMMANDS ===
 
 def show_team(command, sender):
     params = command.split(' ')
     if len(params) < 2:
-        return 'Please specify a team name.'
+        return NO_NAME
     name = params[1].lower()
     if name not in STANDUP_TEAMS:
-        return 'No team exists with that name.'
+        return TEAM_DOES_NOT_EXIST
     team = STANDUP_TEAMS[name]
     if len(team['members']) == 0:
-        return f'{name} currently has no members :pensive:'
+        return EMPTY_TEAM
     else:
         update_reactions(name)
         output = f'{name} consists of the following members:\n'
@@ -81,13 +91,13 @@ def show_teams(command, sender):
     
 def remove_team(command, sender, channel):
     if (channel[0] != 'C'):
-        return 'This function can only be used in a channel.'
+        return CHANNEL_ONLY
     params = command.split(' ')
     if len(params) < 2:
-        return 'Please specify a team name.'
+        return NO_NAME
     name = params[1].lower()
     if name not in STANDUP_TEAMS:
-        return 'No team exists with that name.'
+        return TEAM_DOES_NOT_EXIST
     STANDUP_TEAMS.pop(name)
     save_json(STANDUP_TEAMS)
     return f'<@{sender}> has removed {name} from the list of teams.'
@@ -95,63 +105,58 @@ def remove_team(command, sender, channel):
 def add_team(command, sender):
     params = command.split(' ')
     if len(params) < 2:
-        return 'Please specify a team name.'
+        return NO_NAME
     name = params[1].lower()
     if (not is_valid_team_name(name)):
-        return 'Please give a valid team name'
+        return INVALID_NAME
     if name in STANDUP_TEAMS:
         return 'A team with this name already exists.'
     STANDUP_TEAMS[name] = copy.deepcopy(EMPTY_TEAM)
     save_json(STANDUP_TEAMS)
     return f'{name} has been added to the teams list.'
 
-def backup_team(command, sender):
-    params = command.split(' ')
-    if len(params) < 2:
-        return 'Please specify a team name.'
-    name = params[1].lower()
-    if (not is_valid_team_name(name)):
-        return 'Please give a valid team name.'
-    if name not in STANDUP_TEAMS:
-        return 'A team with this name does not exist.'
-    BACKUP[name] = copy.deepcopy(STANDUP_TEAMS[name])
-    save_json(BACKUP,'backup.json')
-    return f'{name} has been backed up to the file.'
-
-def restore_team(command, sender):
-    params = command.split(' ')
-    if len(params) < 2:
-        return 'Please specify a team name.'
-    name = params[1].lower()
-    if (not is_valid_team_name(name)):
-        return 'Please give a valid team name.'
-    if name not in BACKUP:
-        return 'A team with this name has not been backed up.'
-    STANDUP_TEAMS[name] = copy.deepcopy(BACKUP[name])
-    save_json(STANDUP_TEAMS)
-    return f'{name} has been restored.'
-
-def remove_backup(command, sender):
-    params = command.split(' ')
-    if len(params) < 2:
-        return 'Please specify a team name.'
-    name = params[1].lower()
-    if (not is_valid_team_name(name)):
-        return 'Please give a valid team name.'
-    if name not in BACKUP:
-        return 'A team with this name has not been backed up.'
-    BACKUP.pop(name)
-    save_json(BACKUP, 'backup.json')
-    return f'The backup for {name} has been removed.'
-    
-def show_backups(command, sender):
-    if not len(BACKUP):
-        return 'There are no teams backed up.'
-    output = 'Backed up teams are as follows: \n'
-    for key in BACKUP:
-        output += f'\t{key}\n'
+def backup_usage():
+    output = 'Use `backup` with one of the following options:\n'
+    output += '\t`show`: Shows all teams currently stored in the backup file.\n'
+    output += '\t`add <team>`: Backs up the specified team.\n'
+    output += '\t`restore <team>`: Restores the specified team to the standup list.\n'
+    output += '\t`remove <team>`: Removes the specified team from the backup file.'
     return output
 
+def handle_backup(command, sender): # TODO maybe: add a time for when the backup was created?
+    params = command.split(' ')
+    if len(params) > 1 and params[1].lower() == 'show':
+        if not len(BACKUP):
+            return 'There are no teams backed up.'
+        output = 'Backed up teams are as follows: \n'
+        for key in BACKUP:
+            output += f'\t{key}\n'
+        return output
+    elif len(params) > 2 and params[1].lower() in BACKUP_OPTIONS:
+        option = params[1].lower()
+        team = params[2].lower()
+        if (not is_valid_team_name(team)):
+            return INVALID_NAME
+        if option == 'add':
+            if team not in STANDUP_TEAMS:
+                return TEAM_DOES_NOT_EXIST
+            BACKUP[team] = copy.deepcopy(STANDUP_TEAMS[team])
+            save_json(BACKUP, 'backup.json')
+            return f'{team} has been backed up to the file.'
+        elif option == 'restore':
+            if team not in BACKUP:
+                return 'That team hasn\'t been backed up.'
+            STANDUP_TEAMS[team] = copy.deepcopy(BACKUP[team])
+            save_json(STANDUP_TEAMS)
+            return f'{team} has been restored from the file.'
+        else:
+            if team not in BACKUP:
+                return 'That team hasn\'t been backed up.'
+            BACKUP.pop(team)
+            save_json(BACKUP, 'backup.json')
+            return f'The backup for {team} has been removed from the file.'
+    return backup_usage()
+    
 def save_json(table, file='standup.json'):
     with open(file, 'w') as json_file:
         json.dump(table, json_file, indent = 4, sort_keys=True)
@@ -162,7 +167,7 @@ def add_member(command, sender):
         return 'Try `add <team> @<user>` to add a user to the team.'
     team = params[1].lower()
     if team not in STANDUP_TEAMS:
-        return 'No team exists with that name.'
+        return TEAM_DOES_NOT_EXIST
     users_added = 0
     for token in range(2, len(params)):
         match = re.search(ADD_USER_REGEX, params[token])
@@ -179,13 +184,13 @@ def add_member(command, sender):
 
 def remove_member(command, sender, channel):
     if channel[0] != 'C':
-        return 'This function can only be used in a channel.'
+        return CHANNEL_ONLY
     params = command.split(' ')
     if len (params) < 3:
         return 'Try `remove <team> @<user>` to remove a user from the team.'
     team = params[1].lower()
     if team not in STANDUP_TEAMS:
-        return 'No team exists with that name.'
+        return TEAM_DOES_NOT_EXIST
     users_removed = 0
     for token in range(2, len(params)):
         match = re.search(ADD_USER_REGEX, params[token])
@@ -222,21 +227,21 @@ def show_umarfc(command, sender, channel):
         }
 
 def list_commands(command, sender):
-    commandList = 'Here is a list of commands:\n'
+    command_list = 'Here is a list of the commands:\n'
     for key, value in CHOICES.items():
         if (key not in FAKE_FUNCTIONS):
-            commandList += f'\t{key}\n'
-    commandList += 'For a full explanation of all commands, view the README here:\n'
-    commandList += 'https://github.com/YangF0917/ACJBot'
-    return commandList
+            command_list += f'\t{key}\n'
+    command_list += 'For a full explanation of all commands, view the README here:\n'
+    command_list += 'https://github.com/YangF0917/ACJBot'
+    return command_list
 
 def sort_help():
-    sortList = 'Try `sort <team> <sort type>` \nHere is the list of sorts:\n'
+    sort_list = 'Try `sort <team> <sort type>` \nHere is the list of sorts:\n'
     for key in SORTS.keys():
         if (key not in FAKE_SORTS):
-            sortList += f'\t{key}\n'
-    sortList += 'You can probably figure out what each one is ;)\nOr you could just read the documentation on https://github.com/YangF0917/ACJBot'
-    return sortList
+            sort_list += f'\t{key}\n'
+    sort_list += 'You can probably figure out what each one is ;)\nOr you could just read the documentation on https://github.com/YangF0917/ACJBot'
+    return sort_list
 
 def choose_standup_order(command, sender, channel):
     command_string = command.split(' ')
@@ -247,11 +252,11 @@ def choose_standup_order(command, sender, channel):
     if (sort == 'umar' and channel[0] != 'D'):
         return sort_help()
     if team not in STANDUP_TEAMS:
-        return 'Can\'t sort a team that doesn\'t exist!'
+        return TEAM_DOES_NOT_EXIST
     update_reactions(team)
     team = STANDUP_TEAMS[team]['members']
     if len(team) < 1:
-        return 'The team is empty :pensive:'
+        return EMPTY_TEAM
     else:
         tableString = 'Today\'s standup order:\n'
         temp = SORTS[sort](command, sender, team)
@@ -332,7 +337,7 @@ def is_valid_number(string):
     return True
 
 def is_valid_team_name(string):
-    return re.search('^\w+$', string)
+    return re.search(TEAM_NAME_REGEX, string)
 
 def get_name(member):
     return slack_client.api_call('users.info', user=member)['user']['name']
@@ -345,13 +350,12 @@ def ps_usage():
     output += 'Note: Each team can receive postscrum messages in only one channel, and the messages will not appear if a time is not set.'
     return output
 
-# usage: @acj ps team ['time'/'stop'/'message'] [message/time]
 def configure_postscrum (command, sender, channel):
     params = command.split(' ')
     if len(params) > 2:
         team = params[1].lower()
         if team not in STANDUP_TEAMS:
-            return 'That team doesn\'t exist.'
+            return TEAM_DOES_NOT_EXIST
         if params[2] == 'time' and len(params) > 3:
             match = re.search(TIME_REGEX, params[3])
             if match:
@@ -394,10 +398,7 @@ CHOICES['umarfc'] = show_umarfc
 CHOICES['advice'] = advice
 CHOICES['number'] = number
 CHOICES['help'] = list_commands
-CHOICES['backup'] = backup_team
-CHOICES['restore'] = restore_team
-CHOICES['removebackup'] = remove_backup
-CHOICES['showbackups'] = show_backups
+CHOICES['backup'] = handle_backup
 
 # sorts
 SORTS['alpha'] = alpha_order
@@ -492,7 +493,7 @@ def handle_command(command, channel, sender):
         Executes bot command if the command is known
     '''
     # Default response is help text for the user
-    default_response = 'Not sure what you mean. Type *{}* for a list of commands.'.format(EXAMPLE_COMMAND)
+    default_response = f'Not sure what you mean. Try `{EXAMPLE_COMMAND}` for a list of commands.'
 
     # Finds and executes the given command, filling in response
     response = None
