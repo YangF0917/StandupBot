@@ -1,4 +1,4 @@
-# ACJBot
+# StandupBot
 Slack bot for creating standup order
 
 # [Environment Setup](https://www.fullstackpython.com/blog/build-first-slack-bot-python.html)
