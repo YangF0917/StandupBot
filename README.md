@@ -2,7 +2,7 @@
 Slack bot for creating standup order
 
 # [Environment Setup](https://www.fullstackpython.com/blog/build-first-slack-bot-python.html)
-1. Open your terminal and navigate to the ACJBot directory
+1. Open your terminal and navigate to the StandupBot directory
 2. Type `virtualenv starterbot` (you can replace `starterbot` with whatever you want your virtual environment to be called; it's not important)
    * You may need to install this command - on WSL, I needed to run `sudo apt install python3-virtualenv`
 3. Activate the virtual environment with `source starterbot/bin/activate` (again, replace `starterbot` with whatever you decided to name your virtual environment)
@@ -36,7 +36,8 @@ removeteam `<team>`:
 backup `<option>`:
 - manages the backup file
 - Options:
-   - `show`: lists the teams that are currently backed up
+   - `showteams`: lists the teams that are currently backed up
+   - `show <team>`: shows a specific team's backup settings 
    - `add <team>`: adds the specified team to the backup file
    - `restore <team>`: restores the specified team from the backup file
    - `remove <team>`: removes the specified team from the backup file
