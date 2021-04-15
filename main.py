@@ -251,7 +251,7 @@ def list_commands(command, sender):
         if (key not in FAKE_FUNCTIONS):
             command_list += f'\t{key}\n'
     command_list += 'For a full explanation of all commands, view the README here:\n'
-    command_list += 'https://github.com/YangF0917/ACJBot'
+    command_list += 'https://github.com/YangF0917/StandupBot'
     return command_list
 
 def sort_help():
@@ -259,7 +259,7 @@ def sort_help():
     for key in SORTS.keys():
         if (key not in FAKE_SORTS):
             sort_list += f'\t{key}\n'
-    sort_list += 'You can probably figure out what each one is ;)\nOr you could just read the documentation on https://github.com/YangF0917/ACJBot'
+    sort_list += 'You can probably figure out what each one is ;)\nOr you could just read the documentation on https://github.com/YangF0917/StandupBot'
     return sort_list
 
 def choose_standup_order(command, sender, channel):
