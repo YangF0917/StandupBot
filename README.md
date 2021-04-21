@@ -1,11 +1,16 @@
 # StandupBot
-Slack bot for creating standup order
+This slack bot helps out with standup meetings via storing teams, sending postscrum messages, and choosing standup orders!
+
+# Getting Access
+1. Make sure that you have collaborater permissions to access [the slack app](https://api.slack.com/apps/A01UA2U1Q75) - if you don't have this position, ask Mike.
+2. Install Python 3, `pip`, and `virtualenv` if you don't already have them.
+3. Clone the repository.
+4. Create a .env file and add the line `SLACK_BOT_TOKEN="<Token>"`, with `<Token>` being replaced by the Bot User Oauth Token found on [this page](https://api.slack.com/apps/A01UA2U1Q75/install-on-team?)
 
 # [Environment Setup](https://www.fullstackpython.com/blog/build-first-slack-bot-python.html)
-1. Open your terminal and navigate to the StandupBot directory
-2. Type `virtualenv starterbot` (you can replace `starterbot` with whatever you want your virtual environment to be called; it's not important)
-   * You may need to install this command - on WSL, I needed to run `sudo apt install python3-virtualenv`
-3. Activate the virtual environment with `source starterbot/bin/activate` (again, replace `starterbot` with whatever you decided to name your virtual environment)
+1. Open your terminal and navigate to the standup-slackbot directory
+2. Type `virtualenv venv` to make a virtual environment called "venv"
+3. Activate the virtual environment with `source venv/bin/activate`
 4. Install requirements: `pip install -r requirements.txt`
 5. Export your slack token: `export SLACK_BOT_TOKEN='(bot user access token)'`
 

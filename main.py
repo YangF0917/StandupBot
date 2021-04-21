@@ -53,8 +53,6 @@ CHANNEL_ONLY = 'This command can only be used in a channel.'
 TEAM_IS_EMPTY = 'That team is empty :pensive:'
 
 # initialize objects
-with open('ufc.json') as f:
-  UMAR_FC = json.load(f)
 with open('standup.json') as f:
   STANDUP_TEAMS = json.load(f)
 with open('backup.json') as f:
@@ -137,6 +135,8 @@ def handle_backup(command, sender): # TODO maybe: add a time for when the backup
         team = params[2]
         if (not is_valid_team_name(team)):
             return INVALID_NAME
+        if not len(BACKUP):
+            return 'There are no teams backed up.'
         return show_backup(team)
     elif len(params) > 2 and params[1].lower() in BACKUP_OPTIONS:
         option = params[1].lower()
@@ -165,7 +165,7 @@ def handle_backup(command, sender): # TODO maybe: add a time for when the backup
 
 def show_backup(team):
     if team not in BACKUP:
-        'That team hasn\'t been backed up.'
+        return 'That team hasn\'t been backed up.'
     output = f'The backup for {team} is as follows\n'
     output += 'Members:\n'
     for name in BACKUP[team]['members']:
